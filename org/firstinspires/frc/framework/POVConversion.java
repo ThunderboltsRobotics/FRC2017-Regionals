@@ -1,7 +1,7 @@
-package org.firstinspires.frc4739.framework;
+package org.firstinspires.frc.framework;
 
 public class POVConversion {
-	public static enum POVDirection {
+	public enum POVDirection {
 		CENTER, U, UR, R, DR, D, DL, L, UL
 	}
 

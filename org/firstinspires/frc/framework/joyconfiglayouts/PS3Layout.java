@@ -1,8 +1,8 @@
-package org.firstinspires.frc4739.config.joyconfiglayouts;
+package org.firstinspires.frc.framework.joyconfiglayouts;
 
 public class PS3Layout {
-	public static final int FORWARDS = 1;
-	public static final int REVERSE = -1;
+	private static final int FORWARDS = 1;
+	private static final int REVERSE = -1;
 
 	public static final int AXIS_LS_X = 0;
 	public static final int AXIS_LS_X_DIRECTION = FORWARDS;

@@ -1,32 +1,32 @@
-package org.firstinspires.frc4739.framework;
+package org.firstinspires.frc.framework.hardware;
+
+import org.firstinspires.frc.framework.abstraction.*;
 
 import edu.wpi.first.wpilibj.Talon;
 import edu.wpi.first.wpilibj.TalonSRX;
 import edu.wpi.first.wpilibj.Victor;
 
 public class MotorController {
-	public static enum MotorControllerType {
+	public enum MotorControllerType {
 		Talon, TalonSR, TalonSRX, Victor
 	}
-	private RioPWMPort rioPort;
-	private MotorControllerType controllerType;
-	private Object controllerRaw;
+	private RioPWMPort port;
+	private MotorControllerType type;
+	private Object rawControllerInstance;
 
-	public MotorController(RioPWMPort port, MotorControllerType type) {
+	public MotorController(RioPWMPort initPort, MotorControllerType initType) {
+		port = initPort;
+		type = initType;
 		switch (type) {
 			case Talon:
 			case TalonSR:
-				controllerRaw = new Talon(port.getPortNumber());
+				rawControllerInstance = new Talon(port.getPortNumber());
 				break;
 			case TalonSRX:
-				controllerRaw = new TalonSRX(port.getPortNumber());
+				rawControllerInstance = new TalonSRX(port.getPortNumber());
 				break;
 			case Victor:
-				controllerRaw = new Victor(port.getPortNumber());
+				rawControllerInstance = new Victor(port.getPortNumber());
 		}
-	}
-
-	public void myMethod() {
-		
 	}
 }
