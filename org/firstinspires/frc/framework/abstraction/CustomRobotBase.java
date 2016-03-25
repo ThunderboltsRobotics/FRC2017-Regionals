@@ -1,4 +1,4 @@
-package org.firstinspires.frc4739.framework;
+package org.firstinspires.frc.framework.abstraction;
 
 import java.net.URL;
 import java.util.Enumeration;
@@ -19,14 +19,12 @@ import edu.wpi.first.wpilibj.networktables.NetworkTable;
  * @author FRC 4739 Thunderbolts Robotics
  */
 public abstract class CustomRobotBase extends RobotBase {
-	public static final int ROBOT_TASK_PRIORITY = 101; //TODO: change?
-	protected final DriverStation DS;
+	final DriverStation DS = DriverStation.getInstance();
 
-	protected CustomRobotBase() {
+	CustomRobotBase() {
 		NetworkTable.setNetworkIdentity("Robot");
 		NetworkTable.setPersistentFilename("/home/lvuser/networktables.ini");
 		NetworkTable.setServerMode();
-		DS = DriverStation.getInstance();
 		NetworkTable.getTable("");
 	}
 
