@@ -7,7 +7,7 @@ import org.firstinspires.frc._4739.JoyConfig;
  * 4739's teleop routine for the 2016 game (FIRST Stronghold).
  * @author FRC 4739 Thunderbolts Robotics
  */
-public class MatchTeleop2016 extends MatchPhaseRoutine {
+public class Teleop extends MatchPhaseRoutine {
 	private static final double DRIVE_SPEED_MULTIPLIER = 0.3;
 	private static double frontArmPower, leftTankPower, rightTankPower;
 

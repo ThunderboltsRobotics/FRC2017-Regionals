@@ -6,7 +6,7 @@ import org.firstinspires.frc.framework.abstraction.MatchPhaseRoutine;
  * 4739's autonomous routine for the 2016 game (FIRST Stronghold).
  * @author FRC 4739 Thunderbolts Robotics
  */
-public class MatchAuto2016 extends MatchPhaseRoutine {
+public class Auto extends MatchPhaseRoutine {
 	private static final double FORWARD_SPEED = 0.4;
 	private static final int PHASE_1_END = 30;
 	private static final int PHASE_2_END = 150;
