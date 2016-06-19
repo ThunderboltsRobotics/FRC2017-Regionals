@@ -21,25 +21,22 @@ public class Teleop extends MatchPhaseRoutine {
 		private final double centerY = 1 / 2;
 		private final double goalX = GRIPResult.x + (GRIPResult.w / 2);
 		private final double goalY = GRIPResult.y + (GRIPResult.h / 2);
-		private final double hitZone = 0.01;
-		//TODO
-		if (goalX < centerX - ) {
-			Hardware.TankDrive.right(leftTankPower * DRIVE_SPEED_MULTIPLIER);
-		} else if (goalX > centerX + ) {
-			Hardware.TankDrive.left(rightTankPower * DRIVE_SPEED_MULTIPLIER);
-		}
+		private final double hitZoneX = 0.01;
+		private final double hitZoneY = 0.01;
 
-		//Front arm
-		frontArmPower = JoyConfig.Joy1.getLeftTrigger();
-		if (frontArmPower > JoyConfig.Joy1.TRIGGGER_DEADZONE) {
-			Hardware.FrontArm.drive(frontArmPower);
+		if (goalX < centerX - hitZoneX) {
+			Hardware.TankDrive.right( * DRIVE_SPEED_MULTIPLIER);
+		} else if (goalX > centerX + hitZoneY) {
+			Hardware.TankDrive.left(rightTankPower * DRIVE_SPEED_MULTIPLIER);
 		} else {
-			frontArmPower = -JoyConfig.Joy1.getRightTrigger();
-			if (frontArmPower < -JoyConfig.Joy1.TRIGGGER_DEADZONE) {
-				Hardware.FrontArm.drive(frontArmPower);
-			} else {
-				Hardware.FrontArm.drive(0);
-			}
+			Hardware.TankDrive.stop();
+		}
+		if (goalY < centerY - hitZoneY) {
+			Hardware.FrontArm.drive(leftTankPower * DRIVE_SPEED_MULTIPLIER);
+		} else if (goalY > centerY + hitZoneY) {
+			Hardware.FrontArm.drive(rightTankPower * DRIVE_SPEED_MULTIPLIER);
+		} else {
+			Hardware.FrontArm.drive(0);
 		}
 	}
 }
