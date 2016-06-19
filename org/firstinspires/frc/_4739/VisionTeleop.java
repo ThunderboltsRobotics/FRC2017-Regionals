@@ -17,15 +17,16 @@ public class Teleop extends MatchPhaseRoutine {
 
 	public void tick() {
 		//TODO get GRIP telemetry
-		private final double centerX = 1/2;
-		private final double centerY = 1/2;
+		private final double centerX = 1 / 2;
+		private final double centerY = 1 / 2;
 		private final double goalX = GRIPResult.x + (GRIPResult.w / 2);
 		private final double goalY = GRIPResult.y + (GRIPResult.h / 2);
+		private final double hitZone = 0.01;
 		//TODO
-		if () {
-			Hardware.TankDrive.left(leftTankPower * DRIVE_SPEED_MULTIPLIER);
-		} else if () {
-			Hardware.TankDrive.right(rightTankPower * DRIVE_SPEED_MULTIPLIER);
+		if (goalX < centerX - ) {
+			Hardware.TankDrive.right(leftTankPower * DRIVE_SPEED_MULTIPLIER);
+		} else if (goalX > centerX + ) {
+			Hardware.TankDrive.left(rightTankPower * DRIVE_SPEED_MULTIPLIER);
 		}
 
 		//Front arm
