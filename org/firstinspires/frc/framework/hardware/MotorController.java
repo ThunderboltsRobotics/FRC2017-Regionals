@@ -1,32 +1,61 @@
 package org.firstinspires.frc.framework.hardware;
 
-import org.firstinspires.frc.framework.abstraction.*;
+import org.firstinspires.frc.framework.abstraction.RioCANID;
+import org.firstinspires.frc.framework.abstraction.RioPWMPort;
+import org.firstinspires.frc.framework.granulation.GenericCANMotorController;
+import org.firstinspires.frc.framework.granulation.GenericPWMMotorController;
 
-import edu.wpi.first.wpilibj.Talon;
-import edu.wpi.first.wpilibj.TalonSRX;
-import edu.wpi.first.wpilibj.Victor;
-
+/**
+ * Represents and allows the manipulation of a motor's speed controller, allowing motors to be controlled. Both PWM and CAN interfaces are supported.
+ * @author FRC 4739 Thunderbolts Robotics
+ * @version 2016-07-10/20
+ */
 public class MotorController {
-	public enum MotorControllerType {
-		Talon, TalonSR, TalonSRX, Victor
+	public static final class CANIsUnsupportedException extends Exception {
+		public CANIsUnsupportedException(MotorControllerType m) {
+			super(m.name() + " motor controllers do not support CAN");
+		}
 	}
-	private RioPWMPort port;
-	private MotorControllerType type;
-	private Object rawControllerInstance;
+
+	private final int rawIndex;
+	private final MotorControllerType type;
+	private final boolean isCAN;
+	private GenericPWMMotorController rawPWMInstance;
+	private GenericCANMotorController rawCANInstance;
+	private boolean isReversed = false;
 
 	public MotorController(RioPWMPort initPort, MotorControllerType initType) {
-		port = initPort;
+		rawIndex = initPort.getPortNumber();
 		type = initType;
-		switch (type) {
-			case Talon:
-			case TalonSR:
-				rawControllerInstance = new Talon(port.getPortNumber());
-				break;
-			case TalonSRX:
-				rawControllerInstance = new TalonSRX(port.getPortNumber());
-				break;
-			case Victor:
-				rawControllerInstance = new Victor(port.getPortNumber());
+		isCAN = false;
+		rawPWMInstance = new GenericPWMMotorController(initPort, type);
+	}
+	public MotorController(RioCANID initPort, MotorControllerType initType) throws CANIsUnsupportedException {
+		if (!initType.getIsCANEnabled()) {
+			throw new CANIsUnsupportedException(initType);
+		}
+		rawIndex = initPort.getIDNumber();
+		type = initType;
+		isCAN = true;
+		rawCANInstance = new GenericCANMotorController(initPort, type);
+	}
+
+	public boolean isReversed() {
+		return isReversed;
+	}
+
+	public void reverse() {
+		isReversed = !isReversed;
+	}
+
+	public void setSpeed(double d) {
+		if (isReversed) {
+			d = -d;
+		}
+		if (isCAN) {
+			rawCANInstance.set(d);
+		} else {
+			rawPWMInstance.set(d);
 		}
 	}
 }
