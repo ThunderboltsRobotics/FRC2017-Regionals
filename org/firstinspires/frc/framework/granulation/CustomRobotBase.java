@@ -1,4 +1,4 @@
-package org.firstinspires.frc.framework.abstraction;
+package org.firstinspires.frc.framework.granulation;
 
 import java.net.URL;
 import java.util.Enumeration;
@@ -16,9 +16,12 @@ import edu.wpi.first.wpilibj.networktables.NetworkTable;
 
 /**
  * Clutter-free replacement for RobotBase from WPILibJ v2016.0.0.
+ * RobotBase.java (decompiled) totals to < 200 lines. This file is < 100 lines.
+ * TODO merge w/ BetterRobot
  * @author FRC 4739 Thunderbolts Robotics
+ * @version 2016-07-10/00
  */
-public abstract class CustomRobotBase extends RobotBase {
+abstract class CustomRobotBase extends RobotBase {
 	final DriverStation DS = DriverStation.getInstance();
 
 	CustomRobotBase() {
