@@ -1,10 +1,12 @@
 package org.firstinspires.frc.framework.granulation;
 
 import edu.wpi.first.wpilibj.*;
-import edu.wpi.first.wpilibj.CANJaguar.JaguarControlMode;
 import edu.wpi.first.wpilibj.CANJaguar.LimitMode;
 import edu.wpi.first.wpilibj.CANJaguar.NeutralMode;
-import edu.wpi.first.wpilibj.CANTalon.*;
+import edu.wpi.first.wpilibj.CANTalon.FeedbackDevice;
+import edu.wpi.first.wpilibj.CANTalon.FeedbackDeviceStatus;
+import edu.wpi.first.wpilibj.CANTalon.SetValueMotionProfile;
+import edu.wpi.first.wpilibj.CANTalon.StatusFrameRate;
 import edu.wpi.first.wpilibj.can.CANJNI;
 import edu.wpi.first.wpilibj.can.CANMessageNotFoundException;
 import edu.wpi.first.wpilibj.communication.UsageReporting;
@@ -30,32 +32,37 @@ import java.nio.ByteOrder;
  * CANJaguar.java and CANTalon.java (both decompiled) total to < 2600 lines. This file is < 2300 lines.
  * @author FRC 4739 Thunderbolts Robotics
  * @see MotorController
- * @version 2016-07-14/00
+ * @version 2016-07-14/01
  */
 @SuppressWarnings({"SameParameterValue", "unused", "WeakerAccess"})
 public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSource, CANSpeedController {
 	//Global
 	private RioCANID port;
 	private MotorControllerType type;
+	private CANDeviceControlMode controlMode;
 	private boolean isInverted = false;
 	private boolean isControlEnabled = true;
 
 	//Jaguar
 	private static final int jaguarFirmwareVersionMinimum = 108;
 	private static final int jaguarFirmwareVersionMaximum = 3329;
-	private JaguarControlMode jaguarControlMode;
+	private enum JaguarVerifiedStatuses {
+		ControlMode, LimitMode, NeutralMode,
+		SpeedReference, PositionReference,
+		ForwardLimit, ReverseLimit,
+		P, I, D,
+		EncoderCodesPerRevolution, PotentiometerTurns, MaxOutputVoltage, VoltageRampRate, FaultTime
+	}
+	private boolean[] jaguarReceivedStatusMessages;
+	private boolean[] jaguarVerifiedStatuses;
 
 	//TalonSRX
-	private TalonControlMode talonControlMode;
 	private long talonJNIInstanceID;
 
 	//Throwables
 	public class AttemptedPIDWithIncorrectControlModeException extends UnsupportedOperationException {
-		public AttemptedPIDWithIncorrectControlModeException(String methodName, JaguarControlMode m) {
-			super("Attempted to call the " + methodName + " method of a CAN Jaguar on " + m.name() + " mode");
-		}
-		public AttemptedPIDWithIncorrectControlModeException(String methodName, TalonControlMode m) {
-			super("Attempted to call the " + methodName + " method of a CAN TalonSRX on " + m.name() + " mode");
+		public AttemptedPIDWithIncorrectControlModeException(String methodName) {
+			super("Attempted to call the " + methodName + " method of a CAN " + type.name() + " on " + controlMode.name() + " mode");
 		}
 	}
 	public class InvalidJaguarFirmwareVersionException extends IndexOutOfBoundsException {
@@ -105,8 +112,29 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	private MotorSafetyHelper m_safetyHelper;
 	private NeutralMode m_neutralMode;
 	private PIDSourceType m_pidSource;
-	private boolean[] m_jaguarReceivedStatusMessages;
-	private boolean[] m_jaguarVerifiedStatuses;
+
+	public enum CANDeviceControlMode implements ControlMode {
+		PercentVbus(0, false), Position(1, false), Speed(2, false), Current(3, false), Voltage(4, false), Follower(5, true), MotionProfile(6, true), Disabled(15, true);
+
+		public final int value;
+		public final boolean isTalonOnly;
+		CANDeviceControlMode(int value, boolean isTalonOnly) {
+			this.value = value;
+			this.isTalonOnly = isTalonOnly;
+		}
+
+		//TODO make this a switch
+		public boolean isPID() {
+			return this == Current || this == Speed || this == Position;
+		}
+		public int getValue() {
+			return 0;
+		}
+		//TODO make this a switch and remove from constructor
+		public boolean isTalonOnly() {
+			return isTalonOnly;
+		}
+	}
 
 	//TODO merge - from CANJaguar and CANTalon
 	private byte m_deviceNumberJaguar;
@@ -278,7 +306,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		m_numPotTurns = 0;
 		m_feedbackDevice = FeedbackDevice.QuadEncoder;
 		setProfile(m_profile);
-		applyControlMode(TalonControlMode.PercentVbus);
+		applyControlMode(CANDeviceControlMode.PercentVbus);
 		LiveWindow.addActuator("CANTalon", m_deviceNumberTalon, this);
 	}
 
@@ -292,21 +320,21 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		m_maxOutputVoltage = 12;
 		m_voltageRampRate = 0;
 		m_faultTime = 0;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.ControlMode.ordinal()] = true;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.SpeedReference.ordinal()] = true;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.PositionReference.ordinal()] = true;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.P.ordinal()] = true;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.I.ordinal()] = true;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.D.ordinal()] = true;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.NeutralMode.ordinal()] = true;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.EncoderCodesPerRevolution.ordinal()] = true;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.PotentiometerTurns.ordinal()] = true;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.ForwardLimit.ordinal()] = true;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.ReverseLimit.ordinal()] = true;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.LimitMode.ordinal()] = true;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.MaxOutputVoltage.ordinal()] = true;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.VoltageRampRate.ordinal()] = true;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.FaultTime.ordinal()] = true;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.ControlMode.ordinal()] = true;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.SpeedReference.ordinal()] = true;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.PositionReference.ordinal()] = true;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.P.ordinal()] = true;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.I.ordinal()] = true;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.D.ordinal()] = true;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.NeutralMode.ordinal()] = true;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.EncoderCodesPerRevolution.ordinal()] = true;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.PotentiometerTurns.ordinal()] = true;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.ForwardLimit.ordinal()] = true;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.ReverseLimit.ordinal()] = true;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.LimitMode.ordinal()] = true;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.MaxOutputVoltage.ordinal()] = true;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.VoltageRampRate.ordinal()] = true;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.FaultTime.ordinal()] = true;
 		m_busVoltage = 0;
 		m_outputVoltage = 0;
 		m_outputCurrent = 0;
@@ -316,8 +344,8 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		m_limits = 0;
 		m_firmwareVersion = 0;
 		m_hardwareVersion = 0;
-		m_jaguarReceivedStatusMessages = new boolean[]{false, false, false};
-		m_jaguarVerifiedStatuses = new boolean[JaguarVerifiedStatuses.values().length];
+		jaguarReceivedStatusMessages = new boolean[]{false, false, false};
+		jaguarVerifiedStatuses = new boolean[JaguarVerifiedStatuses.values().length];
 		m_tableJaguar = null;
 		m_table_listenerJaguar = null;
 
@@ -328,7 +356,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		}
 
 		m_deviceNumberJaguar = (byte) deviceNumber;
-		jaguarControlMode = JaguarControlMode.PercentVbus;
+		controlMode = CANDeviceControlMode.PercentVbus;
 		m_safetyHelper = new MotorSafetyHelper(this);
 		byte[] data = new byte[8];
 		requestMessage(-2147483136);
@@ -340,12 +368,12 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			updatePeriodicStatus();
 			getMessage(512, 536870911, data);
 			m_firmwareVersion = unpackINT32(data);
-			if (m_jaguarReceivedStatusMessages[0] && m_jaguarReceivedStatusMessages[1] && m_jaguarReceivedStatusMessages[2]) {
+			if (jaguarReceivedStatusMessages[0] && jaguarReceivedStatusMessages[1] && jaguarReceivedStatusMessages[2]) {
 				break;
 			}
 		}
 
-		if (m_jaguarReceivedStatusMessages[0] && m_jaguarReceivedStatusMessages[1] && m_jaguarReceivedStatusMessages[2]) {
+		if (jaguarReceivedStatusMessages[0] && jaguarReceivedStatusMessages[1] && jaguarReceivedStatusMessages[2]) {
 			getMessage(520225088, 536870911, data);
 			m_hardwareVersion = data[0];
 			if (m_firmwareVersion < jaguarFirmwareVersionMinimum) {
@@ -363,7 +391,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		allocated.free(m_deviceNumberJaguar - 1);
 		m_safetyHelper = null;
 		int messageID;
-		switch(jaguarControlMode.ordinal()) {
+		switch(controlMode.ordinal()) {
 			case 1:
 				messageID = m_deviceNumberJaguar | 33685824;
 				break;
@@ -392,7 +420,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			case Jaguar:
 				return m_value;
 			case TalonSRX:
-				switch (talonControlMode.ordinal()) {
+				switch (controlMode.ordinal()) {
 					case 1:
 					case 2:
 					default:
@@ -444,7 +472,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				if (isControlEnabled) {
 					int messageID;
 					byte dataSize;
-					switch (jaguarControlMode.ordinal()) {
+					switch (controlMode.ordinal()) {
 						case 1:
 							messageID = 33685824;
 							dataSize = packPercentage(data, isInverted ? -outputValue : outputValue);
@@ -498,7 +526,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				m_safetyHelper.feed();
 				if (isControlEnabled) {
 					m_setPoint = value;
-					switch (talonControlMode.ordinal()) {
+					switch (controlMode.ordinal()) {
 						case 1:
 							CanTalonJNI.Set(talonJNIInstanceID, isInverted ? -value : value);
 							break;
@@ -521,7 +549,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 							CanTalonJNI.SetDemand(talonJNIInstanceID, (int) value);
 							break;
 					}
-					CanTalonJNI.SetModeSelect(talonJNIInstanceID, talonControlMode.value);
+					CanTalonJNI.SetModeSelect(talonJNIInstanceID, controlMode.value);
 				}
 				break;
 		}
@@ -558,28 +586,28 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			if (e) {
 				data[0] = 1;
 				sendMessage(33691136, data, 1);
-				m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.ControlMode.ordinal()] = false;
-				m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.SpeedReference.ordinal()] = false;
-				m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.PositionReference.ordinal()] = false;
-				m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.NeutralMode.ordinal()] = false;
-				m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.EncoderCodesPerRevolution.ordinal()] = false;
-				m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.PotentiometerTurns.ordinal()] = false;
-				m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.ForwardLimit.ordinal()] = false;
-				m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.ReverseLimit.ordinal()] = false;
-				m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.LimitMode.ordinal()] = false;
-				m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.MaxOutputVoltage.ordinal()] = false;
-				m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.FaultTime.ordinal()] = false;
-				if (jaguarControlMode != JaguarControlMode.PercentVbus && jaguarControlMode != JaguarControlMode.Voltage) {
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.P.ordinal()] = false;
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.I.ordinal()] = false;
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.D.ordinal()] = false;
+				jaguarVerifiedStatuses[JaguarVerifiedStatuses.ControlMode.ordinal()] = false;
+				jaguarVerifiedStatuses[JaguarVerifiedStatuses.SpeedReference.ordinal()] = false;
+				jaguarVerifiedStatuses[JaguarVerifiedStatuses.PositionReference.ordinal()] = false;
+				jaguarVerifiedStatuses[JaguarVerifiedStatuses.NeutralMode.ordinal()] = false;
+				jaguarVerifiedStatuses[JaguarVerifiedStatuses.EncoderCodesPerRevolution.ordinal()] = false;
+				jaguarVerifiedStatuses[JaguarVerifiedStatuses.PotentiometerTurns.ordinal()] = false;
+				jaguarVerifiedStatuses[JaguarVerifiedStatuses.ForwardLimit.ordinal()] = false;
+				jaguarVerifiedStatuses[JaguarVerifiedStatuses.ReverseLimit.ordinal()] = false;
+				jaguarVerifiedStatuses[JaguarVerifiedStatuses.LimitMode.ordinal()] = false;
+				jaguarVerifiedStatuses[JaguarVerifiedStatuses.MaxOutputVoltage.ordinal()] = false;
+				jaguarVerifiedStatuses[JaguarVerifiedStatuses.FaultTime.ordinal()] = false;
+				if (controlMode != CANDeviceControlMode.PercentVbus && controlMode != CANDeviceControlMode.Voltage) {
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.P.ordinal()] = false;
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.I.ordinal()] = false;
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.D.ordinal()] = false;
 				} else {
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.VoltageRampRate.ordinal()] = false;
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.VoltageRampRate.ordinal()] = false;
 				}
 
-				m_jaguarReceivedStatusMessages[0] = false;
-				m_jaguarReceivedStatusMessages[1] = false;
-				m_jaguarReceivedStatusMessages[2] = false;
+				jaguarReceivedStatusMessages[0] = false;
+				jaguarReceivedStatusMessages[1] = false;
+				jaguarReceivedStatusMessages[2] = false;
 				int[] e1 = new int[]{33686912, 33688960, 33686720, 33688768, 33689792, 33686784, 33688832, 33689856, 33686848, 33688896, 33689920, 33692736, 33692800, 33692864, 33692928, 33693056, 33693120, 33685696, 33687808, 33693184, 33692992};
 
 				for (int message : e1) {
@@ -590,11 +618,11 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			requestMessage(33691136);
 		}
 
-		if (!m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.ControlMode.ordinal()] && isControlEnabled) {
+		if (!jaguarVerifiedStatuses[JaguarVerifiedStatuses.ControlMode.ordinal()] && isControlEnabled) {
 			try {
 				getMessage(33691200, 536870911, data);
-				if (jaguarControlMode == JaguarControlMode.values()[data[0]]) {
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.ControlMode.ordinal()] = true;
+				if (controlMode == CANDeviceControlMode.values()[data[0]]) {
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.ControlMode.ordinal()] = true;
 				} else {
 					enableControl();
 				}
@@ -604,12 +632,12 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		}
 
 		byte var28;
-		if (!m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.SpeedReference.ordinal()]) {
+		if (!jaguarVerifiedStatuses[JaguarVerifiedStatuses.SpeedReference.ordinal()]) {
 			try {
 				getMessage(33686912, 536870911, data);
 				var28 = data[0];
 				if (m_speedReference == var28) {
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.SpeedReference.ordinal()] = true;
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.SpeedReference.ordinal()] = true;
 				} else {
 					setSpeedReference(m_speedReference);
 				}
@@ -618,12 +646,12 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			}
 		}
 
-		if (!m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.PositionReference.ordinal()]) {
+		if (!jaguarVerifiedStatuses[JaguarVerifiedStatuses.PositionReference.ordinal()]) {
 			try {
 				getMessage(33688960, 536870911, data);
 				var28 = data[0];
 				if (m_positionReference == var28) {
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.PositionReference.ordinal()] = true;
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.PositionReference.ordinal()] = true;
 				} else {
 					setPositionReference(m_positionReference);
 				}
@@ -634,9 +662,9 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 
 		int var29;
 		double var30;
-		if (!m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.P.ordinal()]) {
+		if (!jaguarVerifiedStatuses[JaguarVerifiedStatuses.P.ordinal()]) {
 			var29 = 0;
-			switch(jaguarControlMode.ordinal()) {
+			switch(controlMode.ordinal()) {
 				case 2:
 					var29 = 33686720;
 					break;
@@ -651,7 +679,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				getMessage(var29, 536870911, data);
 				var30 = unpackFXP16_16(data);
 				if (FXP16_EQ(m_p, var30)) {
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.P.ordinal()] = true;
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.P.ordinal()] = true;
 				} else {
 					setP(m_p);
 				}
@@ -660,9 +688,9 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			}
 		}
 
-		if (!m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.I.ordinal()]) {
+		if (!jaguarVerifiedStatuses[JaguarVerifiedStatuses.I.ordinal()]) {
 			var29 = 0;
-			switch(jaguarControlMode.ordinal()) {
+			switch(controlMode.ordinal()) {
 				case 2:
 					var29 = 33686784;
 					break;
@@ -677,7 +705,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				getMessage(var29, 536870911, data);
 				var30 = unpackFXP16_16(data);
 				if (FXP16_EQ(m_i, var30)) {
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.I.ordinal()] = true;
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.I.ordinal()] = true;
 				} else {
 					setI(m_i);
 				}
@@ -686,9 +714,9 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			}
 		}
 
-		if (!m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.D.ordinal()]) {
+		if (!jaguarVerifiedStatuses[JaguarVerifiedStatuses.D.ordinal()]) {
 			var29 = 0;
-			switch(jaguarControlMode.ordinal()) {
+			switch(controlMode.ordinal()) {
 				case 2:
 					var29 = 33686848;
 					break;
@@ -703,7 +731,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				getMessage(var29, 536870911, data);
 				var30 = unpackFXP16_16(data);
 				if (FXP16_EQ(m_d, var30)) {
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.D.ordinal()] = true;
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.D.ordinal()] = true;
 				} else {
 					setD(m_d);
 				}
@@ -712,11 +740,11 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			}
 		}
 
-		if (!m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.NeutralMode.ordinal()]) {
+		if (!jaguarVerifiedStatuses[JaguarVerifiedStatuses.NeutralMode.ordinal()]) {
 			try {
 				getMessage(33692864, 536870911, data);
 				if (NeutralMode.valueOf(data[0]) == m_neutralMode) {
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.NeutralMode.ordinal()] = true;
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.NeutralMode.ordinal()] = true;
 				} else {
 					configNeutralMode(m_neutralMode);
 				}
@@ -726,12 +754,12 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		}
 
 		short var32;
-		if (!m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.EncoderCodesPerRevolution.ordinal()]) {
+		if (!jaguarVerifiedStatuses[JaguarVerifiedStatuses.EncoderCodesPerRevolution.ordinal()]) {
 			try {
 				getMessage(33692736, 536870911, data);
 				var32 = unpackINT16(data);
 				if (var32 == m_encoderCodesPerRev) {
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.EncoderCodesPerRevolution.ordinal()] = true;
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.EncoderCodesPerRevolution.ordinal()] = true;
 				} else {
 					configEncoderCodesPerRev(m_encoderCodesPerRev);
 				}
@@ -740,12 +768,12 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			}
 		}
 
-		if (!m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.PotentiometerTurns.ordinal()]) {
+		if (!jaguarVerifiedStatuses[JaguarVerifiedStatuses.PotentiometerTurns.ordinal()]) {
 			try {
 				getMessage(33692800, 536870911, data);
 				var32 = unpackINT16(data);
 				if (var32 == m_potentiometerTurns) {
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.PotentiometerTurns.ordinal()] = true;
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.PotentiometerTurns.ordinal()] = true;
 				} else {
 					configPotentiometerTurns(m_potentiometerTurns);
 				}
@@ -754,12 +782,12 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			}
 		}
 
-		if (!m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.LimitMode.ordinal()]) {
+		if (!jaguarVerifiedStatuses[JaguarVerifiedStatuses.LimitMode.ordinal()]) {
 			try {
 				getMessage(33692928, 536870911, data);
 				LimitMode var33 = LimitMode.valueOf(data[0]);
 				if (var33 == m_limitMode) {
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.LimitMode.ordinal()] = true;
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.LimitMode.ordinal()] = true;
 				} else {
 					configLimitMode(m_limitMode);
 				}
@@ -769,12 +797,12 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		}
 
 		double var34;
-		if (!m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.ForwardLimit.ordinal()]) {
+		if (!jaguarVerifiedStatuses[JaguarVerifiedStatuses.ForwardLimit.ordinal()]) {
 			try {
 				getMessage(33692992, 536870911, data);
 				var34 = unpackFXP16_16(data);
 				if (FXP16_EQ(var34, m_forwardLimit)) {
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.ForwardLimit.ordinal()] = true;
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.ForwardLimit.ordinal()] = true;
 				} else {
 					configForwardLimit(m_forwardLimit);
 				}
@@ -783,12 +811,12 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			}
 		}
 
-		if (!m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.ReverseLimit.ordinal()]) {
+		if (!jaguarVerifiedStatuses[JaguarVerifiedStatuses.ReverseLimit.ordinal()]) {
 			try {
 				getMessage(33693056, 536870911, data);
 				var34 = unpackFXP16_16(data);
 				if (FXP16_EQ(var34, m_reverseLimit)) {
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.ReverseLimit.ordinal()] = true;
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.ReverseLimit.ordinal()] = true;
 				} else {
 					configReverseLimit(m_reverseLimit);
 				}
@@ -797,12 +825,12 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			}
 		}
 
-		if (!m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.MaxOutputVoltage.ordinal()]) {
+		if (!jaguarVerifiedStatuses[JaguarVerifiedStatuses.MaxOutputVoltage.ordinal()]) {
 			try {
 				getMessage(33693120, 536870911, data);
 				var34 = unpackFXP8_8(data);
 				if (Math.abs(var34 - m_maxOutputVoltage) < 0.1) {
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.MaxOutputVoltage.ordinal()] = true;
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.MaxOutputVoltage.ordinal()] = true;
 				} else {
 					configMaxOutputVoltage(m_maxOutputVoltage);
 				}
@@ -811,13 +839,13 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			}
 		}
 
-		if (!m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.VoltageRampRate.ordinal()]) {
-			if (jaguarControlMode == JaguarControlMode.PercentVbus) {
+		if (!jaguarVerifiedStatuses[JaguarVerifiedStatuses.VoltageRampRate.ordinal()]) {
+			if (controlMode == CANDeviceControlMode.PercentVbus) {
 				try {
 					getMessage(33685696, 536870911, data);
 					var34 = unpackPercentage(data);
 					if (FXP16_EQ(var34, m_voltageRampRate)) {
-						m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.VoltageRampRate.ordinal()] = true;
+						jaguarVerifiedStatuses[JaguarVerifiedStatuses.VoltageRampRate.ordinal()] = true;
 					} else {
 						setVoltageRampRate(m_voltageRampRate);
 					}
@@ -825,12 +853,12 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 					requestMessage(33685696);
 				}
 			}
-		} else if (jaguarControlMode == JaguarControlMode.Voltage) {
+		} else if (controlMode == CANDeviceControlMode.Voltage) {
 			try {
 				getMessage(33687808, 536870911, data);
 				var34 = unpackFXP8_8(data);
 				if (FXP8_EQ(var34, m_voltageRampRate)) {
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.VoltageRampRate.ordinal()] = true;
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.VoltageRampRate.ordinal()] = true;
 				} else {
 					setVoltageRampRate(m_voltageRampRate);
 				}
@@ -839,12 +867,12 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			}
 		}
 
-		if (!m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.FaultTime.ordinal()]) {
+		if (!jaguarVerifiedStatuses[JaguarVerifiedStatuses.FaultTime.ordinal()]) {
 			try {
 				getMessage(33693184, 536870911, data);
 				var32 = unpackINT16(data);
 				if ((int)((double) m_faultTime * 1000) == var32) {
-					m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.FaultTime.ordinal()] = true;
+					jaguarVerifiedStatuses[JaguarVerifiedStatuses.FaultTime.ordinal()] = true;
 				} else {
 					configFaultTime(m_faultTime);
 				}
@@ -853,7 +881,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			}
 		}
 
-		if (!m_jaguarReceivedStatusMessages[0] || !m_jaguarReceivedStatusMessages[1] || !m_jaguarReceivedStatusMessages[2]) {
+		if (!jaguarReceivedStatusMessages[0] || !jaguarReceivedStatusMessages[1] || !jaguarReceivedStatusMessages[2]) {
 			setupPeriodicStatus();
 			getTemperature();
 			getPosition();
@@ -891,7 +919,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				sendMessage(33687936, new byte[0], 0, -1);
 				break;
 			case TalonSRX:
-				CanTalonJNI.SetModeSelect(talonJNIInstanceID, TalonControlMode.Disabled.value);
+				CanTalonJNI.SetModeSelect(talonJNIInstanceID, CANDeviceControlMode.Disabled.value);
 				break;
 		}
 		isControlEnabled = false;
@@ -900,7 +928,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public void enableControl() {
 		switch (type) {
 			case Jaguar:
-				switch(jaguarControlMode.ordinal()) {
+				switch(controlMode.ordinal()) {
 					case 1:
 						sendMessage(33685760, new byte[0], 0);
 						break;
@@ -920,7 +948,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				}
 				break;
 			case TalonSRX:
-				setControlMode(talonControlMode);
+				setControlMode(controlMode);
 				break;
 		}
 		isControlEnabled = true;
@@ -929,19 +957,19 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public void pidWrite(double output) {
 		switch (type) {
 			case Jaguar:
-				if (jaguarControlMode == JaguarControlMode.PercentVbus) {
+				if (controlMode == CANDeviceControlMode.PercentVbus) {
 					set(output);
 				} else {
-					//TODO check available modes
-					throw new AttemptedPIDWithIncorrectControlModeException("pidWrite", jaguarControlMode);
+					//TODO check available modes in original
+					throw new AttemptedPIDWithIncorrectControlModeException("pidWrite");
 				}
 				break;
 			case TalonSRX:
-				if (getControlMode_Talon() == TalonControlMode.PercentVbus) {
+				if (getControlMode_Talon() == CANDeviceControlMode.PercentVbus) {
 					set(output);
 				} else {
-					//TODO check available modes
-					throw new AttemptedPIDWithIncorrectControlModeException("pidWrite", talonControlMode);
+					//TODO check available modes in original
+					throw new AttemptedPIDWithIncorrectControlModeException("pidWrite");
 				}
 				break;
 		}
@@ -950,13 +978,13 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	private void setSpeedReference(int reference) {
 		sendMessage(33686912, new byte[]{(byte) reference}, 1);
 		m_speedReference = reference;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.SpeedReference.ordinal()] = false;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.SpeedReference.ordinal()] = false;
 	}
 
 	private void setPositionReference(int reference) {
 		sendMessage(33688960, new byte[]{(byte) reference}, 1);
 		m_positionReference = reference;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.PositionReference.ordinal()] = false;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.PositionReference.ordinal()] = false;
 	}
 
 	public void setPID(double p, double i, double d) {
@@ -997,7 +1025,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public double getP() {
 		switch (type) {
 			case Jaguar:
-				switch (jaguarControlMode) {
+				switch (controlMode) {
 					case Current:
 					case Speed:
 					case Position:
@@ -1026,7 +1054,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			case Jaguar:
 				byte[] data = new byte[8];
 				byte dataSize = packFXP16_16(data, p);
-				switch(jaguarControlMode) {
+				switch(controlMode) {
 					case Current:
 						sendMessage(33686720, data, dataSize);
 						break;
@@ -1041,7 +1069,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				}
 
 				m_p = p;
-				m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.P.ordinal()] = false;
+				jaguarVerifiedStatuses[JaguarVerifiedStatuses.P.ordinal()] = false;
 				break;
 			case TalonSRX:
 				CanTalonJNI.SetPgain(talonJNIInstanceID, m_profile, p);
@@ -1052,7 +1080,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public double getI() {
 		switch (type) {
 			case Jaguar:
-				switch (jaguarControlMode) {
+				switch (controlMode) {
 					case Current:
 					case Speed:
 					case Position:
@@ -1078,7 +1106,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			case Jaguar:
 				byte[] data = new byte[8];
 				byte dataSize = packFXP16_16(data, i);
-				switch(jaguarControlMode) {
+				switch(controlMode) {
 					case Current:
 						sendMessage(33686784, data, dataSize);
 						break;
@@ -1093,7 +1121,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				}
 
 				m_i = i;
-				m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.I.ordinal()] = false;
+				jaguarVerifiedStatuses[JaguarVerifiedStatuses.I.ordinal()] = false;
 				break;
 			case TalonSRX:
 				CanTalonJNI.SetIgain(talonJNIInstanceID, m_profile, i);
@@ -1104,7 +1132,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 
 	//TODO merge
 	public double getD() {
-		if (!jaguarControlMode.equals(JaguarControlMode.PercentVbus) && !jaguarControlMode.equals(JaguarControlMode.Voltage)) {
+		if (!controlMode.equals(CANDeviceControlMode.PercentVbus) && !controlMode.equals(CANDeviceControlMode.Voltage)) {
 			return m_d;
 		} else {
 			throw new IllegalStateException("PID does not apply in Percent or Voltage control modes");
@@ -1116,7 +1144,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			case Jaguar:
 				byte[] data = new byte[8];
 				byte dataSize = packFXP16_16(data, d);
-				switch(jaguarControlMode) {
+				switch(controlMode) {
 					case Current:
 						sendMessage(33686848, data, dataSize);
 						break;
@@ -1131,7 +1159,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				}
 
 				m_d = d;
-				m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.D.ordinal()] = false;
+				jaguarVerifiedStatuses[JaguarVerifiedStatuses.D.ordinal()] = false;
 				break;
 			case TalonSRX:
 				CanTalonJNI.SetDgain(talonJNIInstanceID, m_profile, d);
@@ -1172,13 +1200,13 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	}
 
 	public void setPercentMode() {
-		setControlMode(JaguarControlMode.PercentVbus);
+		setControlMode(CANDeviceControlMode.PercentVbus);
 		setPositionReference(255);
 		setSpeedReference(255);
 	}
 
 	public void setPercentMode_Encoder(int codesPerRev, boolean isQuadEncoder) {
-		setControlMode(JaguarControlMode.PercentVbus);
+		setControlMode(CANDeviceControlMode.PercentVbus);
 		configEncoderCodesPerRev(codesPerRev);
 		if (isQuadEncoder) {
 			setPositionReference(0);
@@ -1190,21 +1218,21 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	}
 
 	public void setPercentMode_Potentiometer() {
-		setControlMode(JaguarControlMode.PercentVbus);
+		setControlMode(CANDeviceControlMode.PercentVbus);
 		setPositionReference(1);
 		setSpeedReference(255);
 		configPotentiometerTurns(1);
 	}
 
 	public void setCurrentMode(double p, double i, double d) {
-		setControlMode(JaguarControlMode.Current);
+		setControlMode(CANDeviceControlMode.Current);
 		setPositionReference(255);
 		setSpeedReference(255);
 		setPID(p, i, d);
 	}
 
 	public void setCurrentMode_Encoder(double p, double i, double d, int codesPerRev, boolean isQuadEncoder) {
-		setControlMode(JaguarControlMode.Current);
+		setControlMode(CANDeviceControlMode.Current);
 		configEncoderCodesPerRev(codesPerRev);
 		setPID(p, i, d);
 		if (isQuadEncoder) {
@@ -1217,7 +1245,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	}
 
 	public void setCurrentMode_Potentiometer(double p, double i, double d) {
-		setControlMode(JaguarControlMode.Current);
+		setControlMode(CANDeviceControlMode.Current);
 		setPositionReference(1);
 		setSpeedReference(255);
 		configPotentiometerTurns(1);
@@ -1225,7 +1253,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	}
 
 	public void setSpeedMode(double p, double i, double d, int codesPerRev, boolean isQuadEncoder) {
-		setControlMode(JaguarControlMode.Speed);
+		setControlMode(CANDeviceControlMode.Speed);
 		configEncoderCodesPerRev(codesPerRev);
 		setPID(p, i, d);
 		if (isQuadEncoder) {
@@ -1238,27 +1266,27 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	}
 
 	public void setPositionMode_QuadEncoder(double p, double i, double d, int codesPerRev) {
-		setControlMode(JaguarControlMode.Position);
+		setControlMode(CANDeviceControlMode.Position);
 		setPositionReference(0);
 		configEncoderCodesPerRev(codesPerRev);
 		setPID(p, i, d);
 	}
 
 	public void setPositionMode_Potentiometer(double p, double i, double d) {
-		setControlMode(JaguarControlMode.Position);
+		setControlMode(CANDeviceControlMode.Position);
 		setPositionReference(1);
 		configPotentiometerTurns(1);
 		setPID(p, i, d);
 	}
 
 	public void setVoltageMode() {
-		setControlMode(JaguarControlMode.Voltage);
+		setControlMode(CANDeviceControlMode.Voltage);
 		setPositionReference(255);
 		setSpeedReference(255);
 	}
 
 	public void setVoltageMode_Encoder(int codesPerRev, boolean isQuadEncoder) {
-		setControlMode(JaguarControlMode.Voltage);
+		setControlMode(CANDeviceControlMode.Voltage);
 		configEncoderCodesPerRev(codesPerRev);
 		if (isQuadEncoder) {
 			setPositionReference(0);
@@ -1270,7 +1298,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	}
 
 	public void setVoltageMode_Potentiometer() {
-		setControlMode(JaguarControlMode.Voltage);
+		setControlMode(CANDeviceControlMode.Voltage);
 		setPositionReference(1);
 		setSpeedReference(255);
 		configPotentiometerTurns(1);
@@ -1286,11 +1314,11 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				return null;
 		}
 	}
-	public JaguarControlMode getControlMode_Jaguar() {
-		return jaguarControlMode;
+	public CANDeviceControlMode getControlMode_Jaguar() {
+		return controlMode;
 	}
-	public TalonControlMode getControlMode_Talon() {
-		return talonControlMode;
+	public CANDeviceControlMode getControlMode_Talon() {
+		return controlMode;
 	}
 
 	public void setControlMode(int i) {
@@ -1300,14 +1328,18 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			e.printStackTrace();
 		}
 	}
-	public void setControlMode(JaguarControlMode m) {
-		disableControl();
-		jaguarControlMode = m;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.ControlMode.ordinal()] = false;
-	}
-	public void setControlMode(TalonControlMode m) {
-		if (talonControlMode != m) {
-			applyControlMode(m);
+	public void setControlMode(CANDeviceControlMode m) {
+		switch (type) {
+			case Jaguar:
+				disableControl();
+				controlMode = m;
+				jaguarVerifiedStatuses[JaguarVerifiedStatuses.ControlMode.ordinal()] = false;
+				break;
+			case TalonSRX:
+				if (controlMode != m) {
+					applyControlMode(m);
+				}
+				break;
 		}
 	}
 
@@ -1397,7 +1429,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		byte[] data = new byte[8];
 		byte dataSize;
 		int message;
-		switch(jaguarControlMode.ordinal()) {
+		switch(controlMode.ordinal()) {
 			case 1:
 				dataSize = packPercentage(data, rampRate / (m_maxOutputVoltage * 1000));
 				message = 33685696;
@@ -1436,7 +1468,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public void configNeutralMode(NeutralMode mode) {
 		sendMessage(33692864, new byte[]{mode.value}, 1);
 		m_neutralMode = mode;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.NeutralMode.ordinal()] = false;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.NeutralMode.ordinal()] = false;
 	}
 
 	public void configEncoderCodesPerRev(int codesPerRev) {
@@ -1444,7 +1476,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		byte dataSize = packINT16(data, (short) codesPerRev);
 		sendMessage(33692736, data, dataSize);
 		m_encoderCodesPerRev = (short) codesPerRev;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.EncoderCodesPerRevolution.ordinal()] = false;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.EncoderCodesPerRevolution.ordinal()] = false;
 	}
 
 	public void configPotentiometerTurns(int turns) {
@@ -1452,7 +1484,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		byte dataSize = packINT16(data, (short) turns);
 		sendMessage(33692800, data, dataSize);
 		m_potentiometerTurns = (short) turns;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.PotentiometerTurns.ordinal()] = false;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.PotentiometerTurns.ordinal()] = false;
 	}
 
 	public void configSoftPositionLimits(double forwardLimitPosition, double reverseLimitPosition) {
@@ -1476,7 +1508,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		data[dataSize] = 1;
 		sendMessage(33692992, data, dataSize1);
 		m_forwardLimit = forwardLimitPosition;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.ForwardLimit.ordinal()] = false;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.ForwardLimit.ordinal()] = false;
 	}
 
 	public void configReverseLimit(double reverseLimitPosition) {
@@ -1486,7 +1518,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		data[dataSize] = 1;
 		sendMessage(33693056, data, dataSize1);
 		m_reverseLimit = reverseLimitPosition;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.ReverseLimit.ordinal()] = false;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.ReverseLimit.ordinal()] = false;
 	}
 
 	public void configMaxOutputVoltage(double voltage) {
@@ -1494,7 +1526,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		byte dataSize = packFXP8_8(data, voltage);
 		sendMessage(33693120, data, dataSize);
 		m_maxOutputVoltage = voltage;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.MaxOutputVoltage.ordinal()] = false;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.MaxOutputVoltage.ordinal()] = false;
 	}
 
 	public void configFaultTime(float faultTime) {
@@ -1508,7 +1540,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		byte dataSize = packINT16(data, (short)((int)((double) faultTime * 1000)));
 		sendMessage(33693184, data, dataSize);
 		m_faultTime = faultTime;
-		m_jaguarVerifiedStatuses[JaguarVerifiedStatuses.FaultTime.ordinal()] = false;
+		jaguarVerifiedStatuses[JaguarVerifiedStatuses.FaultTime.ordinal()] = false;
 	}
 
 	public void sendMessage(int messageID, byte[] data, int dataSize, int period) {
@@ -1566,16 +1598,16 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		m_outputVoltage = unpackPercentage(new byte[]{data[2], data[3]}) * m_busVoltage;
 		m_outputCurrent = unpackFXP8_8(new byte[]{data[4], data[5]});
 		m_temperature = unpackFXP8_8(new byte[]{data[6], data[7]});
-		m_jaguarReceivedStatusMessages[0] = true;
+		jaguarReceivedStatusMessages[0] = true;
 
 		getMessage(33692224, 536870911, data);
 		m_position = unpackFXP16_16(new byte[]{data[0], data[1], data[2], data[3]});
 		m_speed = unpackFXP16_16(new byte[]{data[4], data[5], data[6], data[7]});
-		m_jaguarReceivedStatusMessages[1] = true;
+		jaguarReceivedStatusMessages[1] = true;
 
 		getMessage(33692288, 536870911, data);
 		m_limits = data[0];
-		m_jaguarReceivedStatusMessages[2] = true;
+		jaguarReceivedStatusMessages[2] = true;
 
 	}
 
@@ -1797,14 +1829,14 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		return CanTalonJNI.GetBrakeIsEnabled(talonJNIInstanceID) != 0;
 	}
 
-	private void applyControlMode(TalonControlMode controlMode) {
-		talonControlMode = controlMode;
-		if (controlMode == TalonControlMode.Disabled) {
+	private void applyControlMode(CANDeviceControlMode m) {
+		controlMode = m;
+		if (m == CANDeviceControlMode.Disabled) {
 			isControlEnabled = false;
 		}
 
-		CanTalonJNI.SetModeSelect(talonJNIInstanceID, TalonControlMode.Disabled.value);
-		UsageReporting.report(52, m_deviceNumberTalon + 1, controlMode.value);
+		CanTalonJNI.SetModeSelect(talonJNIInstanceID, CANDeviceControlMode.Disabled.value);
+		UsageReporting.report(52, m_deviceNumberTalon + 1, m.value);
 	}
 
 	public void setFeedbackDevice(FeedbackDevice device) {
@@ -2203,14 +2235,6 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 
 	public void clearMotionProfileHasUnderrun() {
 		setParameter(CanTalonJNI.param_t.eMotionProfileHasUnderrunErr, 0);
-	}
-
-	private enum JaguarVerifiedStatuses {
-		EncoderCodesPerRevolution, PotentiometerTurns, MaxOutputVoltage, VoltageRampRate, FaultTime,
-		ControlMode, LimitMode, NeutralMode,
-		ForwardLimit, ReverseLimit,
-		SpeedReference, PositionReference,
-		P, I, D
 	}
 
 	private static class MotionProfileStatus {
