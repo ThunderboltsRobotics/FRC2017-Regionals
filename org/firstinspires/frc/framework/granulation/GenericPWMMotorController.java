@@ -1,10 +1,10 @@
 package org.firstinspires.frc.framework.granulation;
 
-import edu.wpi.first.wpilibj.PWM;
 import edu.wpi.first.wpilibj.SafePWM;
 import edu.wpi.first.wpilibj.SpeedController;
 import edu.wpi.first.wpilibj.hal.DIOJNI;
-import org.firstinspires.frc.framework.abstraction.RioPWMPort;
+import org.firstinspires.frc.framework.abstraction.RioHWPort;
+import org.firstinspires.frc.framework.abstraction.RioHWPort.*;
 import org.firstinspires.frc.framework.hardware.MotorController;
 import org.firstinspires.frc.framework.hardware.MotorControllerType;
 
@@ -27,15 +27,15 @@ public class GenericPWMMotorController extends SafePWM implements SpeedControlle
 		VictorSP(new double[]{2.004, 1.52, 1.5, 1.48, 0.997}, false);
 
 		private final double[] args;
-		private final PWM.PeriodMultiplier multiplier;
+		private final PeriodMultiplier multiplier;
 		InitPresets(double[] d, boolean is2X) {
 			args = d;
-			multiplier = is2X ? PWM.PeriodMultiplier.k2X : PWM.PeriodMultiplier.k1X;
+			multiplier = is2X ? PeriodMultiplier.k2X : PeriodMultiplier.k1X;
 		}
 		public double[] getArgs() {
 			return args;
 		}
-		public PWM.PeriodMultiplier getMultiplier() {
+		public PeriodMultiplier getMultiplier() {
 			return multiplier;
 		}
 	}
@@ -46,8 +46,8 @@ public class GenericPWMMotorController extends SafePWM implements SpeedControlle
 	private final int PWMMaxPositiveValue;
 	private final int PWMMaxNegativeValue;
 
-	public GenericPWMMotorController(RioPWMPort p, MotorControllerType m) {
-		super(p.getPortNumber());
+	private GenericPWMMotorController(int i, MotorControllerType m) {
+		super(i);
 		double[] args;
 		switch (m) {
 			case Jaguar:
@@ -91,6 +91,14 @@ public class GenericPWMMotorController extends SafePWM implements SpeedControlle
 		setZeroLatch();
 
 		System.out.println("loopTime: " + loopTime);
+	}
+
+	public static GenericPWMMotorController builder(RioHWPort p, MotorControllerType m) {
+		if (p.getType() == PortType.PWM) {
+			return new GenericPWMMotorController(p.getIndex(), m);
+		} else {
+			throw new MismatchedRioPortException(PortType.PWM, p.getType());
+		}
 	}
 
 	public void set(double d) {

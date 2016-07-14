@@ -17,9 +17,8 @@ import edu.wpi.first.wpilibj.networktables.NetworkTable;
 /**
  * Clutter-free replacement for RobotBase from WPILibJ v2016.0.0.
  * RobotBase.java (decompiled) totals to < 200 lines. This file is < 100 lines.
- * TODO merge w/ BetterRobot
  * @author FRC 4739 Thunderbolts Robotics
- * @version 2016-07-10/00
+ * @version 2016-07-13/00
  */
 abstract class CustomRobotBase extends RobotBase {
 	final DriverStation DS = DriverStation.getInstance();

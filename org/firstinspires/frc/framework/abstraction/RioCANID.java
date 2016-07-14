@@ -14,6 +14,7 @@ public class RioCANID {
 		}
 	}
 
+	@SuppressWarnings("SameParameterValue")
 	public RioCANID(int i) {
 		if (i < 0 || MAX_ID < i) {
 			throw new NonexistantRioCANIDException(i);

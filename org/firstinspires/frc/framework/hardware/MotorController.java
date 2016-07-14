@@ -1,7 +1,7 @@
 package org.firstinspires.frc.framework.hardware;
 
 import org.firstinspires.frc.framework.abstraction.RioCANID;
-import org.firstinspires.frc.framework.abstraction.RioPWMPort;
+import org.firstinspires.frc.framework.abstraction.RioHWPort;
 import org.firstinspires.frc.framework.granulation.GenericCANMotorController;
 import org.firstinspires.frc.framework.granulation.GenericPWMMotorController;
 
@@ -17,29 +17,34 @@ public class MotorController {
 		}
 	}
 
-	private final int rawIndex;
 	private final MotorControllerType type;
 	private final boolean isCAN;
-	private GenericPWMMotorController rawPWMInstance;
+	private GenericPWMMotorController rawPWMCopyInstance;
 	private GenericCANMotorController rawCANInstance;
 	private boolean isReversed = false;
 
-	public MotorController(RioPWMPort initPort, MotorControllerType initType) {
-		rawIndex = initPort.getPortNumber();
-		type = initType;
-		isCAN = false;
-		rawPWMInstance = new GenericPWMMotorController(initPort, type);
-	}
+	@SuppressWarnings("SameParameterValue")
 	public MotorController(RioCANID initPort, MotorControllerType initType) throws CANIsUnsupportedException {
-		if (!initType.getIsCANEnabled()) {
+		if (initType.getIsCANEnabled()) {
 			throw new CANIsUnsupportedException(initType);
 		}
-		rawIndex = initPort.getIDNumber();
 		type = initType;
 		isCAN = true;
 		rawCANInstance = new GenericCANMotorController(initPort, type);
 	}
+	public MotorController(RioHWPort port, MotorControllerType type) {
+		switch (port.getType()) {
+			case PWM:
+				this.type = type;
+				isCAN = false;
+				rawPWMCopyInstance = GenericPWMMotorController.builder(port, type);
+				break;
+			default:
+				throw new RioHWPort.MismatchedRioPortException(RioHWPort.PortType.PWM, port.getType());
+		}
+	}
 
+	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
 	public boolean isReversed() {
 		return isReversed;
 	}
@@ -55,7 +60,7 @@ public class MotorController {
 		if (isCAN) {
 			rawCANInstance.set(d);
 		} else {
-			rawPWMInstance.set(d);
+			rawPWMCopyInstance.set(d);
 		}
 	}
 }

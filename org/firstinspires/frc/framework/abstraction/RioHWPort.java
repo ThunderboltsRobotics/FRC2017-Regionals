@@ -4,7 +4,7 @@ import java.util.InputMismatchException;
 
 /**
  * NOTE: THIS CLASS IS NOT FOR USE!
- * This was intended to replace the existing PWM port enum, and allow for other ports e.g. analog, SPI. Unfortunately, the implementation of motor controllers currently requires extending WPILibJ's SafePWM class, and an initial call to super in the motor controller's constructor prevents the correct port type testing.
+ * This was intended to replace the existing PWM port enum, and allow for other ports e.g. analog, SPI. Unfortunately, the implementation of motor controllers currently requires extending WPILibJ's SafePWM class, and an initial call to super in the motor controller's builder prevents the correct port type testing.
  * @author FRC 4739 Thunderbolts Robotics
  * @version 2016-07-10/01
  */
@@ -17,6 +17,7 @@ public enum RioHWPort {
 
 	private final int index;
 	private final PortType type;
+	@SuppressWarnings("SameParameterValue")
 	RioHWPort(PortType t, int i) {
 		index = i;
 		type = t;
@@ -29,6 +30,11 @@ public enum RioHWPort {
 	}
 
 	public static final class MismatchedRioPortException extends InputMismatchException {
+		/**
+		 * @param target Expected port type
+		 * @param given Incorrect port type which was passed
+		 */
+		@SuppressWarnings("SameParameterValue")
 		public MismatchedRioPortException(PortType target, PortType given) {
 			super("Required PortType." + target.name() + ", PortType." + given.name() + " given");
 		}
