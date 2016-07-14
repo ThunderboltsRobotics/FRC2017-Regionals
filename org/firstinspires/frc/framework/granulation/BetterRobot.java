@@ -11,7 +11,7 @@ import org.firstinspires.frc.framework.abstraction.MatchPhase;
  * @author FRC 4739 Thunderbolts Robotics
  * @version 2016-07-10/03
  */
-public class BetterRobot extends CustomRobotBase {
+public abstract class BetterRobot extends CustomRobotBase {
 	public static final DriverStation DSInstance = DriverStation.getInstance();
 	private MatchPhase lastInitialized;
 
@@ -114,57 +114,48 @@ public class BetterRobot extends CustomRobotBase {
 	 * Called once when the robot is first powered on.
 	 * To be overwritten.
 	 */
-	@SuppressWarnings("WeakerAccess")
-	public void initialize() {}
+	public abstract void initialize();
 
 	/**
 	 * Called when the Disabled phase is started (incl. when first powered on).
 	 * To be overwritten.
 	 */
-	@SuppressWarnings("WeakerAccess")
-	public void disabledStart() {}
+	public abstract void disabledStart();
 	/**
 	 * Called at 50Hz during the Disabled phase.
 	 * To be overwritten.
 	 */
-	@SuppressWarnings("WeakerAccess")
-	public void disabledLoop() {}
+	public abstract void disabledLoop();
 
 	/**
 	 * Called when the Autonomous phase is started (incl. when first powered on).
 	 * To be overwritten.
 	 */
-	@SuppressWarnings("WeakerAccess")
-	public void autoStart() {}
+	public abstract void autoStart();
 	/**
 	 * Called at 50Hz during the Autonomous phase.
 	 * To be overwritten.
 	 */
-	@SuppressWarnings("WeakerAccess")
-	public void autoLoop() {}
+	public abstract void autoLoop();
 	/**
 	 * Called when the Teleop phase is started (incl. when first powered on).
 	 * To be overwritten.
 	 */
-	@SuppressWarnings("WeakerAccess")
-	public void teleopStart() {}
+	public abstract void teleopStart();
 	/**
 	 * Called at 50Hz during the Teleop phase.
 	 * To be overwritten.
 	 */
-	@SuppressWarnings("WeakerAccess")
-	public void teleopLoop() {}
+	public abstract void teleopLoop();
 
 	/**
 	 * Called when the Test phase is started (incl. when first powered on).
 	 * To be overwritten.
 	 */
-	@SuppressWarnings("WeakerAccess")
-	public void testStart() {}
+	public abstract void testStart();
 	/**
 	 * Called at 50Hz during the Test phase.
 	 * To be overwritten.
 	 */
-	@SuppressWarnings("WeakerAccess")
-	public void testLoop() {}
+	public abstract void testLoop();
 }
