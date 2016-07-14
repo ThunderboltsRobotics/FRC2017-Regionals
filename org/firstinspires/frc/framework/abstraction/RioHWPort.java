@@ -30,6 +30,10 @@ public enum RioHWPort {
 	}
 
 	public static final class MismatchedRioPortException extends InputMismatchException {
+		/**
+		 * @param target Expected port type
+		 * @param given Incorrect port type which was passed
+		 */
 		@SuppressWarnings("SameParameterValue")
 		public MismatchedRioPortException(PortType target, PortType given) {
 			super("Required PortType." + target.name() + ", PortType." + given.name() + " given");
