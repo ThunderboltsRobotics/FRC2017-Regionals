@@ -2,7 +2,7 @@ package org.firstinspires.frc.framework.hardware;
 
 import edu.wpi.first.wpilibj.*;
 import org.firstinspires.frc.framework.abstraction.RioCANID;
-import org.firstinspires.frc.framework.abstraction.RioPWMPort;
+import org.firstinspires.frc.framework.abstraction.RioHWPort;
 
 /**
  * Represents and allows the manipulation of a motor's speed controller, allowing motors to be controlled. Both PWM and CAN interfaces are supported.
@@ -33,8 +33,11 @@ public class MotorController_Individual {
 
 	private boolean isReversed = false;
 
-	public MotorController_Individual(RioPWMPort initPort, MotorControllerType initType) {
-		rawIndex = initPort.getPortNumber();
+	public MotorController_Individual(RioHWPort initPort, MotorControllerType initType) {
+		if (initPort.getType() != RioHWPort.PortType.PWM) {
+			throw new RioHWPort.MismatchedRioPortException(RioHWPort.PortType.PWM, initPort.getType());
+		}
+		rawIndex = initPort.getIndex();
 		type = initType;
 		isCAN = false;
 		switch (type) {
