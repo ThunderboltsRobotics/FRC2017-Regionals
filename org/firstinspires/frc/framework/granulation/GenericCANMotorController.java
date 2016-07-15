@@ -32,7 +32,7 @@ import java.nio.ByteOrder;
  * CANJaguar.java and CANTalon.java (both decompiled) total to < 2600 lines. This file is < 2300 lines.
  * @author FRC 4739 Thunderbolts Robotics
  * @see MotorController
- * @version 2016-07-15/02
+ * @version 2016-07-15/03
  */
 @SuppressWarnings("WeakerAccess")
 public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSource, CANSpeedController {
@@ -55,8 +55,11 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	}
 	private boolean[] jaguarReceivedStatusMessages;
 	private boolean[] jaguarVerifiedStatuses;
+	private byte jaguarHardwareVersion;
+	private int jaguarFirmwareVersion;
 
 	//TalonSRX
+	private static final double talonGetPIDDelay_s = 0.004;
 	private long talonJNIInstanceID;
 
 	//Throwables
@@ -65,14 +68,30 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			super("Attempted to call the " + methodName + " method of a CAN " + type.name() + " on " + controlMode.name() + " mode");
 		}
 	}
+
+	private String implodeStringArray(String separator, String[] strings) {
+		String toReturn = strings[0];
+		for (int i = 1; i < strings.length; i++) {
+			toReturn += separator + strings[i];
+		}
+		return toReturn;
+	}
+	private String implodeStringArray(String[] s) {
+		return implodeStringArray(", ", s);
+	}
+	public class ExtraParametersNotApplicableException extends IllegalArgumentException {
+		public ExtraParametersNotApplicableException(String methodName, String[] parameters) {
+			super(type.name() + "s don't use the extra argument for " + methodName + "(..." + implodeStringArray(parameters) + ")");
+		}
+	}
+
 	public class InvalidJaguarFirmwareVersionException extends IndexOutOfBoundsException {
 		public InvalidJaguarFirmwareVersionException(boolean isAboveMaximum) {
-			super("Jaguar #" + m_deviceNumberJaguar + "'s firmware version (" + m_firmwareVersion + ") is " + (isAboveMaximum ? "not FIRST approved (version number above highest approved version)" : "is too old (must be at least version 108 of the FIRST approved firmware)"));
+			super("Jaguar #" + m_deviceNumberJaguar + "'s firmware version (" + jaguarFirmwareVersion + ") is " + (isAboveMaximum ? "not FIRST approved (version number above highest approved version)" : "is too old (must be at least version 108 of the FIRST approved firmware)"));
 		}
 	}
 
 	//from CANJaguar and CANTalon
-	private static final double kDelayForSolicitedSignals = 0.004;
 	private static final Resource allocated = new Resource(63);
 
 	//from CANJaguar and CANTalon
@@ -103,10 +122,6 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	private int m_codesPerRev;
 	private int m_numPotTurns;
 
-	//TODO check if these are just Jaguar
-	private int m_firmwareVersion;
-	private byte m_hardwareVersion;
-
 	//from CANJaguar and CANTalon
 	private FeedbackDevice m_feedbackDevice;
 	private LimitMode m_limitMode;
@@ -123,6 +138,10 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			this.value = value;
 		}
 
+		public int getValue() {
+			return 0;
+		}
+
 		public boolean isPID() {
 			switch (this) {
 				case Position:
@@ -133,9 +152,8 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 					return false;
 			}
 		}
-		public int getValue() {
-			return 0;
-		}
+
+		@SuppressWarnings("unused")
 		public boolean isTalonOnly() {
 			switch (this) {
 				case Follower:
@@ -157,58 +175,169 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	private ITableListener m_table_listenerTalon;
 
 	public GenericCANMotorController(RioCANID p, MotorControllerType m) throws CANMessageNotFoundException, CANIsUnsupportedException {
-		switch (m) {
-			case Jaguar:
-				jaguarConstructor(p.getIDNumber());
-				break;
-			case TalonSRX:
-				talonConstructor(p.getIDNumber());
-				talonJNIInstanceID = CanTalonJNI.new_CanTalonSRX(p.getIDNumber());
-				break;
-			default:
-				throw new CANIsUnsupportedException(m);
-		}
 		port = p;
 		type = m;
+		switch (m) {
+			case Jaguar:
+				jaguarConstructor(port.getIDNumber());
+				break;
+			case TalonSRX:
+				talonConstructor(port.getIDNumber());
+				talonJNIInstanceID = CanTalonJNI.new_CanTalonSRX(port.getIDNumber());
+				break;
+			default:
+				throw new CANIsUnsupportedException(type);
+		}
 	}
 
 	@SuppressWarnings("unused")
 	public GenericCANMotorController(RioCANID p, MotorControllerType m, int talonSRXCAN_controlPeriod_ms) throws CANMessageNotFoundException, CANIsUnsupportedException {
+		port = p;
+		type = m;
 		switch (m) {
 			case Jaguar:
-				jaguarConstructor(p.getIDNumber());
-				break;
+				throw new ExtraParametersNotApplicableException("new GenericCANMotorController", new String[]{"int talonSRXCAN_controlPeriod_ms"});
 			case TalonSRX:
-				talonConstructor(p.getIDNumber());
+				talonConstructor(port.getIDNumber());
 				talonJNIInstanceID = CanTalonJNI.new_CanTalonSRX(p.getIDNumber(), talonSRXCAN_controlPeriod_ms);
 				break;
 			default:
-				throw new CANIsUnsupportedException(m);
+				throw new CANIsUnsupportedException(type);
 		}
-		port = p;
-		type = m;
 	}
 
 	@SuppressWarnings("unused")
 	public GenericCANMotorController(RioCANID p, MotorControllerType m, int talonSRXCAN_controlPeriod_ms, int talonSRXCANEnablePeriod_ms) throws CANMessageNotFoundException, CANIsUnsupportedException {
+		port = p;
+		type = m;
 		switch (m) {
 			case Jaguar:
-				jaguarConstructor(p.getIDNumber());
-				break;
+				throw new ExtraParametersNotApplicableException("new GenericCANMotorController", new String[]{"int talonSRXCAN_controlPeriod_ms", "int talonSRXCANEnablePeriod_ms"});
 			case TalonSRX:
-				talonConstructor(p.getIDNumber());
+				talonConstructor(port.getIDNumber());
 				talonJNIInstanceID = CanTalonJNI.new_CanTalonSRX(p.getIDNumber(), talonSRXCAN_controlPeriod_ms, talonSRXCANEnablePeriod_ms);
 				break;
 			default:
-				throw new CANIsUnsupportedException(m);
+				throw new CANIsUnsupportedException(type);
 		}
-		port = p;
-		type = m;
+	}
+
+	public double get() {
+		switch (type) {
+			case Jaguar:
+				return m_value;
+			case TalonSRX:
+				switch (controlMode.ordinal()) {
+					case 1:
+					case 2:
+					default:
+						return (double) CanTalonJNI.GetAppliedThrottle(talonJNIInstanceID) / 1023;
+					case 3:
+						return getOutputVoltage_Talon();
+					case 4:
+						return ScaleNativeUnitsToRpm(m_feedbackDevice, (long) CanTalonJNI.GetSensorVelocity(talonJNIInstanceID));
+					case 5:
+						return ScaleNativeUnitsToRotations(m_feedbackDevice, CanTalonJNI.GetSensorPosition(talonJNIInstanceID));
+					case 6:
+						return getOutputCurrent_Talon();
+				}
+			default:
+				return RobotKiller.doubleKill();
+		}
+	}
+
+	public void set(double outputValue, byte syncGroup) {
+		switch (type) {
+			case Jaguar:
+				byte[] data = new byte[8];
+				if (isControlEnabled) {
+					int messageID;
+					byte dataSize;
+					switch (controlMode.ordinal()) {
+						case 1:
+							messageID = 33685824;
+							dataSize = packPercentage(data, isInverted ? -outputValue : outputValue);
+							break;
+						case 2:
+							messageID = 33687040;
+							dataSize = packFXP16_16(data, isInverted ? -outputValue : outputValue);
+							break;
+						case 3:
+							messageID = 33689088;
+							dataSize = packFXP16_16(data, outputValue);
+							break;
+						case 4:
+							messageID = 33690048;
+							dataSize = packFXP8_8(data, outputValue);
+							break;
+						case 5:
+							messageID = 33687936;
+							dataSize = packFXP8_8(data, isInverted ? -outputValue : outputValue);
+							break;
+						default:
+							return;
+					}
+
+					if (syncGroup != 0) {
+						data[dataSize++] = syncGroup;
+					}
+
+					sendMessage(messageID, data, dataSize, 20);
+					if (m_safetyHelper != null) {
+						m_safetyHelper.feed();
+					}
+				}
+
+				m_value = outputValue;
+				verify();
+				break;
+			case TalonSRX:
+				throw new ExtraParametersNotApplicableException("set", new String[]{"byte syncGroup"});
+		}
+	}
+
+	public void set(double value) {
+		switch (type) {
+			case Jaguar:
+				set(value, (byte) 0);
+				break;
+			case TalonSRX:
+				m_safetyHelper.feed();
+				if (isControlEnabled) {
+					m_setPoint = value;
+					switch (controlMode.ordinal()) {
+						case 1:
+							CanTalonJNI.Set(talonJNIInstanceID, isInverted ? -value : value);
+							break;
+						case 2:
+							CanTalonJNI.SetDemand(talonJNIInstanceID, (int) value);
+							break;
+						case 3:
+							CanTalonJNI.SetDemand(talonJNIInstanceID, 256 * (int) (isInverted ? -value : value));
+							break;
+						case 4:
+							CanTalonJNI.SetDemand(talonJNIInstanceID, ScaleVelocityToNativeUnits(m_feedbackDevice, isInverted ? -value : value));
+							break;
+						case 5:
+							CanTalonJNI.SetDemand(talonJNIInstanceID, ScaleRotationsToNativeUnits(m_feedbackDevice, value));
+							break;
+						case 6:
+							CanTalonJNI.SetDemand(talonJNIInstanceID, 1000 * (int) (isInverted ? -value : value));
+							break;
+						case 7:
+							CanTalonJNI.SetDemand(talonJNIInstanceID, (int) value);
+							break;
+					}
+					CanTalonJNI.SetModeSelect(talonJNIInstanceID, controlMode.value);
+				}
+				break;
+		}
 	}
 
 	public double getP() {
 		switch (type) {
 			case Jaguar:
+				//TODO check modes in original
 				switch (controlMode) {
 					case Current:
 					case Speed:
@@ -220,13 +349,8 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 						throw new IllegalStateException("PID does not apply in Percent or Voltage control modes");
 				}
 			case TalonSRX:
-				if (m_profile == 0) {
-					CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot0_P.value);
-				} else {
-					CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot1_P.value);
-				}
-
-				Timer.delay(kDelayForSolicitedSignals);
+				CanTalonJNI.RequestParam(talonJNIInstanceID, m_profile == 0 ? CanTalonJNI.param_t.eProfileParamSlot0_P.value : CanTalonJNI.param_t.eProfileParamSlot1_P.value);
+				Timer.delay(talonGetPIDDelay_s);
 				return CanTalonJNI.GetPgain(talonJNIInstanceID, m_profile);
 			default:
 				return RobotKiller.doubleKill();
@@ -238,6 +362,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			case Jaguar:
 				byte[] data = new byte[8];
 				byte dataSize = packFXP16_16(data, p);
+				//TODO check modes in original
 				switch(controlMode) {
 					case Current:
 						sendMessage(33686720, data, dataSize);
@@ -264,6 +389,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public double getI() {
 		switch (type) {
 			case Jaguar:
+				//TODO check modes in original
 				switch (controlMode) {
 					case Current:
 					case Speed:
@@ -273,12 +399,8 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 						throw new IllegalStateException("PID does not apply in Percent or Voltage control modes");
 				}
 			case TalonSRX:
-				if (m_profile == 0) {
-					CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot0_I.value);
-				} else {
-					CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot1_I.value);
-				}
-				Timer.delay(kDelayForSolicitedSignals);
+				CanTalonJNI.RequestParam(talonJNIInstanceID, m_profile == 0 ? CanTalonJNI.param_t.eProfileParamSlot0_I.value : CanTalonJNI.param_t.eProfileParamSlot1_I.value);
+				Timer.delay(talonGetPIDDelay_s);
 				return CanTalonJNI.GetIgain(talonJNIInstanceID, m_profile);
 			default:
 				return RobotKiller.doubleKill();
@@ -290,6 +412,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			case Jaguar:
 				byte[] data = new byte[8];
 				byte dataSize = packFXP16_16(data, i);
+				//TODO check modes in original
 				switch(controlMode) {
 					case Current:
 						sendMessage(33686784, data, dataSize);
@@ -315,18 +438,15 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public double getD() {
 		switch (type) {
 			case Jaguar:
+				//TODO check modes in original
 				if (!controlMode.equals(CANDeviceControlMode.PercentVbus) && !controlMode.equals(CANDeviceControlMode.Voltage)) {
 					return m_d;
 				} else {
 					throw new IllegalStateException("PID does not apply in Percent or Voltage control modes");
 				}
 			case TalonSRX:
-				if (m_profile == 0) {
-					CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot0_D.value);
-				} else {
-					CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot1_D.value);
-				}
-				Timer.delay(kDelayForSolicitedSignals);
+				CanTalonJNI.RequestParam(talonJNIInstanceID, m_profile == 0 ? CanTalonJNI.param_t.eProfileParamSlot0_D.value : CanTalonJNI.param_t.eProfileParamSlot1_D.value);
+				Timer.delay(talonGetPIDDelay_s);
 				return CanTalonJNI.GetDgain(talonJNIInstanceID, m_profile);
 			default:
 				return RobotKiller.doubleKill();
@@ -338,6 +458,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			case Jaguar:
 				byte[] data = new byte[8];
 				byte dataSize = packFXP16_16(data, d);
+				//TODO check modes in original
 				switch(controlMode) {
 					case Current:
 						sendMessage(33686848, data, dataSize);
@@ -366,7 +487,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		} else {
 			CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot1_F.value);
 		}
-		Timer.delay(kDelayForSolicitedSignals);
+		Timer.delay(talonGetPIDDelay_s);
 		return CanTalonJNI.GetFgain(talonJNIInstanceID, m_profile);
 	}
 
@@ -374,13 +495,14 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		CanTalonJNI.SetFgain(talonJNIInstanceID, m_profile, f);
 	}
 
+	@SuppressWarnings("unused")
 	public double getIZone() {
 		if (m_profile == 0) {
 			CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot0_IZone.value);
 		} else {
 			CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot1_IZone.value);
 		}
-		Timer.delay(kDelayForSolicitedSignals);
+		Timer.delay(talonGetPIDDelay_s);
 		return (double) CanTalonJNI.GetIzone(talonJNIInstanceID, m_profile);
 	}
 
@@ -388,6 +510,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		CanTalonJNI.SetIzone(talonJNIInstanceID, m_profile, iZone);
 	}
 
+	@SuppressWarnings("unused")
 	public double getCloseLoopRampRate() {
 		if (m_profile == 0) {
 			CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot0_CloseLoopRampRate.value);
@@ -395,7 +518,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot1_CloseLoopRampRate.value);
 		}
 
-		Timer.delay(kDelayForSolicitedSignals);
+		Timer.delay(talonGetPIDDelay_s);
 		double throttlePerMs = (double) CanTalonJNI.GetCloseLoopRampRate(talonJNIInstanceID, m_profile);
 		return throttlePerMs / 1023 * 12000;
 	}
@@ -420,6 +543,8 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 
 	public void setPID(double p, double i, double d, double f, int iZone, double closeLoopRampRate, int profile) {
 		switch (type) {
+			case Jaguar:
+				throw new ExtraParametersNotApplicableException("setPID", new String[]{"double f", "int iZone", "double closeLoopRampRate", "int profile"});
 			case TalonSRX:
 				if (profile != 0 && profile != 1) {
 					throw new IllegalArgumentException("Talon PID profile must be 0 or 1.");
@@ -434,9 +559,6 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 					setCloseLoopRampRate(closeLoopRampRate);
 				}
 				break;
-			case Jaguar:
-				System.err.println("Jaguars don't use the extra argument for set(..., double f, int iZone, double closeLoopRampRate, int profile)");
-				setPID(p, i, d);
 		}
 	}
 
@@ -591,8 +713,8 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		m_position = 0;
 		m_speed = 0;
 		m_limits = 0;
-		m_firmwareVersion = 0;
-		m_hardwareVersion = 0;
+		jaguarFirmwareVersion = 0;
+		jaguarHardwareVersion = 0;
 		jaguarReceivedStatusMessages = new boolean[]{false, false, false};
 		jaguarVerifiedStatuses = new boolean[JaguarVerifiedStatuses.values().length];
 		m_tableJaguar = null;
@@ -616,7 +738,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			setupPeriodicStatus();
 			updatePeriodicStatus();
 			getMessage(512, 536870911, data);
-			m_firmwareVersion = unpackINT32(data);
+			jaguarFirmwareVersion = unpackINT32(data);
 			if (jaguarReceivedStatusMessages[0] && jaguarReceivedStatusMessages[1] && jaguarReceivedStatusMessages[2]) {
 				break;
 			}
@@ -624,10 +746,10 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 
 		if (jaguarReceivedStatusMessages[0] && jaguarReceivedStatusMessages[1] && jaguarReceivedStatusMessages[2]) {
 			getMessage(520225088, 536870911, data);
-			m_hardwareVersion = data[0];
-			if (m_firmwareVersion < jaguarFirmwareVersionMinimum) {
+			jaguarHardwareVersion = data[0];
+			if (jaguarFirmwareVersion < jaguarFirmwareVersionMinimum) {
 				throw new InvalidJaguarFirmwareVersionException(false);
-			} else if (m_firmwareVersion > jaguarFirmwareVersionMaximum) {
+			} else if (jaguarFirmwareVersion > jaguarFirmwareVersionMaximum) {
 				throw new InvalidJaguarFirmwareVersionException(true);
 			}
 		} else {
@@ -664,30 +786,6 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		configMaxOutputVoltage(12);
 	}
 
-	public double get() {
-		switch (type) {
-			case Jaguar:
-				return m_value;
-			case TalonSRX:
-				switch (controlMode.ordinal()) {
-					case 1:
-					case 2:
-					default:
-						return (double) CanTalonJNI.GetAppliedThrottle(talonJNIInstanceID) / 1023;
-					case 3:
-						return getOutputVoltage_Talon();
-					case 4:
-						return ScaleNativeUnitsToRpm(m_feedbackDevice, (long) CanTalonJNI.GetSensorVelocity(talonJNIInstanceID));
-					case 5:
-						return ScaleNativeUnitsToRotations(m_feedbackDevice, CanTalonJNI.GetSensorPosition(talonJNIInstanceID));
-					case 6:
-						return getOutputCurrent_Talon();
-				}
-			default:
-				return RobotKiller.doubleKill();
-		}
-	}
-
 	public double getSetpoint() {
 		switch (type) {
 			case Jaguar:
@@ -714,98 +812,8 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		}
 	}
 
-	public void set(double outputValue, byte syncGroup) {
-		switch (type) {
-			case Jaguar:
-				byte[] data = new byte[8];
-				if (isControlEnabled) {
-					int messageID;
-					byte dataSize;
-					switch (controlMode.ordinal()) {
-						case 1:
-							messageID = 33685824;
-							dataSize = packPercentage(data, isInverted ? -outputValue : outputValue);
-							break;
-						case 2:
-							messageID = 33687040;
-							dataSize = packFXP16_16(data, isInverted ? -outputValue : outputValue);
-							break;
-						case 3:
-							messageID = 33689088;
-							dataSize = packFXP16_16(data, outputValue);
-							break;
-						case 4:
-							messageID = 33690048;
-							dataSize = packFXP8_8(data, outputValue);
-							break;
-						case 5:
-							messageID = 33687936;
-							dataSize = packFXP8_8(data, isInverted ? -outputValue : outputValue);
-							break;
-						default:
-							return;
-					}
-
-					if (syncGroup != 0) {
-						data[dataSize++] = syncGroup;
-					}
-
-					sendMessage(messageID, data, dataSize, 20);
-					if (m_safetyHelper != null) {
-						m_safetyHelper.feed();
-					}
-				}
-
-				m_value = outputValue;
-				verify();
-				break;
-			case TalonSRX:
-				System.err.println("Talons don't use the extra argument for set(..., byte syncGroup)");
-				set(outputValue);
-			default:
-		}
-	}
-
-	public void set(double value) {
-		switch (type) {
-			case Jaguar:
-				set(value, (byte) 0);
-				break;
-			case TalonSRX:
-				m_safetyHelper.feed();
-				if (isControlEnabled) {
-					m_setPoint = value;
-					switch (controlMode.ordinal()) {
-						case 1:
-							CanTalonJNI.Set(talonJNIInstanceID, isInverted ? -value : value);
-							break;
-						case 2:
-							CanTalonJNI.SetDemand(talonJNIInstanceID, (int) value);
-							break;
-						case 3:
-							CanTalonJNI.SetDemand(talonJNIInstanceID, 256 * (int) (isInverted ? -value : value));
-							break;
-						case 4:
-							CanTalonJNI.SetDemand(talonJNIInstanceID, ScaleVelocityToNativeUnits(m_feedbackDevice, isInverted ? -value : value));
-							break;
-						case 5:
-							CanTalonJNI.SetDemand(talonJNIInstanceID, ScaleRotationsToNativeUnits(m_feedbackDevice, value));
-							break;
-						case 6:
-							CanTalonJNI.SetDemand(talonJNIInstanceID, 1000 * (int) (isInverted ? -value : value));
-							break;
-						case 7:
-							CanTalonJNI.SetDemand(talonJNIInstanceID, (int) value);
-							break;
-					}
-					CanTalonJNI.SetModeSelect(talonJNIInstanceID, controlMode.value);
-				}
-				break;
-		}
-	}
-
 	public void reset() {
-		//TODO check if the order is important
+		//TODO IRL check if the order is important
 		switch (type) {
 			case Jaguar:
 				set(m_value);
@@ -1209,15 +1217,15 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				if (controlMode == CANDeviceControlMode.PercentVbus) {
 					set(output);
 				} else {
-					//TODO check available modes in original
+					//TODO check modes in original
 					throw new AttemptedPIDWithIncorrectControlModeException("pidWrite");
 				}
 				break;
 			case TalonSRX:
-				if (getControlMode_Talon() == CANDeviceControlMode.PercentVbus) {
+				if (controlMode == CANDeviceControlMode.PercentVbus) {
 					set(output);
 				} else {
-					//TODO check available modes in original
+					//TODO check modes in original
 					throw new AttemptedPIDWithIncorrectControlModeException("pidWrite");
 				}
 				break;
@@ -1358,19 +1366,6 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	}
 
 	public ControlMode getControlMode() {
-		switch (type) {
-			case Jaguar:
-				return getControlMode_Jaguar();
-			case TalonSRX:
-				return getControlMode_Talon();
-			default:
-				return null;
-		}
-	}
-	public CANDeviceControlMode getControlMode_Jaguar() {
-		return controlMode;
-	}
-	public CANDeviceControlMode getControlMode_Talon() {
 		return controlMode;
 	}
 
@@ -1506,10 +1501,10 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public int getFirmwareVersion() {
 		switch (type) {
 			case Jaguar:
-				return m_firmwareVersion;
+				return jaguarFirmwareVersion;
 			case TalonSRX:
 				CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eFirmVers.value);
-				Timer.delay(kDelayForSolicitedSignals);
+				Timer.delay(talonGetPIDDelay_s);
 				return CanTalonJNI.GetParamResponseInt32(talonJNIInstanceID, CanTalonJNI.param_t.eFirmVers.value);
 			default:
 				return RobotKiller.intKill();
@@ -1517,7 +1512,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	}
 
 	public byte getHardwareVersion() {
-		return m_hardwareVersion;
+		return jaguarHardwareVersion;
 	}
 
 	public void configNeutralMode(NeutralMode mode) {
@@ -1911,7 +1906,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 
 	public long getIAccum() {
 		CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.ePidIaccum.value);
-		Timer.delay(kDelayForSolicitedSignals);
+		Timer.delay(talonGetPIDDelay_s);
 		return (long) CanTalonJNI.GetParamResponseInt32(talonJNIInstanceID, CanTalonJNI.param_t.ePidIaccum.value);
 	}
 
@@ -2016,7 +2011,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 
 	public double getParameter(CanTalonJNI.param_t paramEnum) {
 		CanTalonJNI.RequestParam(talonJNIInstanceID, paramEnum.value);
-		Timer.delay(kDelayForSolicitedSignals);
+		Timer.delay(talonGetPIDDelay_s);
 		return CanTalonJNI.GetParamResponse(talonJNIInstanceID, paramEnum.value);
 	}
 
