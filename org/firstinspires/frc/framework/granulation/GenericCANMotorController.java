@@ -32,7 +32,7 @@ import java.nio.ByteOrder;
  * CANJaguar.java and CANTalon.java (both decompiled) total to < 2600 lines. This file is < 2300 lines.
  * @author FRC 4739 Thunderbolts Robotics
  * @see MotorController
- * @version 2016-07-15/00
+ * @version 2016-07-15/01
  */
 @SuppressWarnings("WeakerAccess")
 public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSource, CANSpeedController {
@@ -1131,7 +1131,6 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 					default:
 						throw new IllegalStateException("PID constants only apply in Speed, Position, and Current mode");
 				}
-
 				m_i = i;
 				jaguarVerifiedStatuses[JaguarVerifiedStatuses.I.ordinal()] = false;
 				break;
@@ -1139,7 +1138,6 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				CanTalonJNI.SetIgain(talonJNIInstanceID, m_profile, i);
 				break;
 		}
-
 	}
 
 	public double getD() {
@@ -1181,7 +1179,6 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 					default:
 						throw new IllegalStateException("PID constants only apply in Speed, Position, and Current mode");
 				}
-
 				m_d = d;
 				jaguarVerifiedStatuses[JaguarVerifiedStatuses.D.ordinal()] = false;
 				break;
@@ -1205,11 +1202,6 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public void configEncoderCodesPerRev_Talon(int codesPerRev) {
 		m_codesPerRev = codesPerRev;
 		setParameter(CanTalonJNI.param_t.eNumberEncoderCPR, (double) m_codesPerRev);
-	}
-
-	public void configPotentiometerTurns_Talon(int turns) {
-		m_numPotTurns = turns;
-		setParameter(CanTalonJNI.param_t.eNumberPotTurns, (double) m_numPotTurns);
 	}
 
 	public void setPercentMode() {
@@ -1493,11 +1485,19 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	}
 
 	public void configPotentiometerTurns(int turns) {
-		byte[] data = new byte[8];
-		byte dataSize = packINT16(data, (short) turns);
-		sendMessage(33692800, data, dataSize);
-		m_potentiometerTurns = (short) turns;
-		jaguarVerifiedStatuses[JaguarVerifiedStatuses.PotentiometerTurns.ordinal()] = false;
+		switch (type) {
+			case Jaguar:
+				byte[] data = new byte[8];
+				byte dataSize = packINT16(data, (short) turns);
+				sendMessage(33692800, data, dataSize);
+				m_potentiometerTurns = (short) turns;
+				jaguarVerifiedStatuses[JaguarVerifiedStatuses.PotentiometerTurns.ordinal()] = false;
+				break;
+			case TalonSRX:
+				m_numPotTurns = turns;
+				setParameter(CanTalonJNI.param_t.eNumberPotTurns, (double) m_numPotTurns);
+				break;
+		}
 	}
 
 	public void configSoftPositionLimits(double forwardLimitPosition, double reverseLimitPosition) {
