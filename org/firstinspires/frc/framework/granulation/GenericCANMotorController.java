@@ -32,9 +32,9 @@ import java.nio.ByteOrder;
  * CANJaguar.java and CANTalon.java (both decompiled) total to < 2600 lines. This file is < 2300 lines.
  * @author FRC 4739 Thunderbolts Robotics
  * @see MotorController
- * @version 2016-07-14/01
+ * @version 2016-07-15/00
  */
-@SuppressWarnings({"SameParameterValue", "unused", "WeakerAccess"})
+@SuppressWarnings("WeakerAccess")
 public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSource, CANSpeedController {
 	//Global
 	private RioCANID port;
@@ -99,11 +99,13 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	private short m_encoderCodesPerRev;
 	private short m_potentiometerTurns;
 	private byte m_limits;
-	private byte m_hardwareVersion;
-	private int m_firmwareVersion;
 	private int m_profile;
 	private int m_codesPerRev;
 	private int m_numPotTurns;
+
+	//TODO check if these are just Jaguar
+	private int m_firmwareVersion;
+	private byte m_hardwareVersion;
 
 	//from CANJaguar and CANTalon
 	private FeedbackDevice m_feedbackDevice;
@@ -114,25 +116,35 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	private PIDSourceType m_pidSource;
 
 	public enum CANDeviceControlMode implements ControlMode {
-		PercentVbus(0, false), Position(1, false), Speed(2, false), Current(3, false), Voltage(4, false), Follower(5, true), MotionProfile(6, true), Disabled(15, true);
+		PercentVbus(0), Position(1), Speed(2), Current(3), Voltage(4), Follower(5), MotionProfile(6), Disabled(15);
 
 		public final int value;
-		public final boolean isTalonOnly;
-		CANDeviceControlMode(int value, boolean isTalonOnly) {
+		CANDeviceControlMode(int value) {
 			this.value = value;
-			this.isTalonOnly = isTalonOnly;
 		}
 
-		//TODO make this a switch
 		public boolean isPID() {
-			return this == Current || this == Speed || this == Position;
+			switch (this) {
+				case Position:
+				case Speed:
+				case Current:
+					return true;
+				default:
+					return false;
+			}
 		}
 		public int getValue() {
 			return 0;
 		}
-		//TODO make this a switch and remove from constructor
 		public boolean isTalonOnly() {
-			return isTalonOnly;
+			switch (this) {
+				case Follower:
+				case MotionProfile:
+				case Disabled:
+					return true;
+				default:
+					return false;
+			}
 		}
 	}
 
@@ -1130,12 +1142,24 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 
 	}
 
-	//TODO merge
 	public double getD() {
-		if (!controlMode.equals(CANDeviceControlMode.PercentVbus) && !controlMode.equals(CANDeviceControlMode.Voltage)) {
-			return m_d;
-		} else {
-			throw new IllegalStateException("PID does not apply in Percent or Voltage control modes");
+		switch (type) {
+			case Jaguar:
+				if (!controlMode.equals(CANDeviceControlMode.PercentVbus) && !controlMode.equals(CANDeviceControlMode.Voltage)) {
+					return m_d;
+				} else {
+					throw new IllegalStateException("PID does not apply in Percent or Voltage control modes");
+				}
+			case TalonSRX:
+				if (m_profile == 0) {
+					CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot0_D.value);
+				} else {
+					CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot1_D.value);
+				}
+				Timer.delay(kDelayForSolicitedSignals);
+				return CanTalonJNI.GetDgain(talonJNIInstanceID, m_profile);
+			default:
+				return RobotKiller.doubleKill();
 		}
 	}
 
@@ -1165,17 +1189,6 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				CanTalonJNI.SetDgain(talonJNIInstanceID, m_profile, d);
 				break;
 		}
-	}
-
-	public double getD_Talon() {
-		if (m_profile == 0) {
-			CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot0_D.value);
-		} else {
-			CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot1_D.value);
-		}
-
-		Timer.delay(kDelayForSolicitedSignals);
-		return CanTalonJNI.GetDgain(talonJNIInstanceID, m_profile);
 	}
 
 	public boolean isEnabled() {
