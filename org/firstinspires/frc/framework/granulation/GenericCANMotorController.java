@@ -1,8 +1,8 @@
 package org.firstinspires.frc.framework.granulation;
 
-import edu.wpi.first.wpilibj.*;
 import edu.wpi.first.wpilibj.CANJaguar.LimitMode;
 import edu.wpi.first.wpilibj.CANJaguar.NeutralMode;
+import edu.wpi.first.wpilibj.*;
 import edu.wpi.first.wpilibj.CANTalon.FeedbackDevice;
 import edu.wpi.first.wpilibj.CANTalon.FeedbackDeviceStatus;
 import edu.wpi.first.wpilibj.CANTalon.SetValueMotionProfile;
@@ -32,7 +32,7 @@ import java.nio.ByteOrder;
  * CANJaguar.java and CANTalon.java (both decompiled) total to < 2600 lines. This file is < 2300 lines.
  * @author FRC 4739 Thunderbolts Robotics
  * @see MotorController
- * @version 2016-07-15/01
+ * @version 2016-07-15/02
  */
 @SuppressWarnings("WeakerAccess")
 public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSource, CANSpeedController {
@@ -1455,15 +1455,17 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		CanTalonJNI.SetRampThrottle(talonJNIInstanceID, rate);
 	}
 
-	//TODO merge
-	public int getFirmwareVersion_Jaguar() {
-		return m_firmwareVersion;
-	}
-
-	public long getFirmwareVersion_Talon() {
-		CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eFirmVers.value);
-		Timer.delay(kDelayForSolicitedSignals);
-		return (long) CanTalonJNI.GetParamResponseInt32(talonJNIInstanceID, CanTalonJNI.param_t.eFirmVers.value);
+	public int getFirmwareVersion() {
+		switch (type) {
+			case Jaguar:
+				return m_firmwareVersion;
+			case TalonSRX:
+				CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eFirmVers.value);
+				Timer.delay(kDelayForSolicitedSignals);
+				return CanTalonJNI.GetParamResponseInt32(talonJNIInstanceID, CanTalonJNI.param_t.eFirmVers.value);
+			default:
+				return RobotKiller.intKill();
+		}
 	}
 
 	public byte getHardwareVersion() {
