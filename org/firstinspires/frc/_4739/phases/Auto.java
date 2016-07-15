@@ -1,6 +1,6 @@
 package org.firstinspires.frc._4739.phases;
 
-import org.firstinspires.frc._4739.HW;
+import org.firstinspires.frc._4739.Hardware;
 import org.firstinspires.frc._4739.RobotMain;
 import org.firstinspires.frc.framework.software.MatchPhaseRoutine;
 
@@ -19,7 +19,7 @@ public class Auto extends MatchPhaseRoutine {
 	public void loop() {
 		if (RobotMain.DSInstance.getMatchTime() < PHASE_1_END) {
 			//Phase 1: drive forward
-			HW.Motors.Drive.drive(FORWARD_SPEED, FORWARD_SPEED);
+			Hardware.Drive.drive(FORWARD_SPEED, FORWARD_SPEED);
 		}
 	}
 }

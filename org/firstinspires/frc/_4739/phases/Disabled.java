@@ -1,6 +1,6 @@
 package org.firstinspires.frc._4739.phases;
 
-import org.firstinspires.frc._4739.HW;
+import org.firstinspires.frc._4739.Hardware;
 import org.firstinspires.frc.framework.software.MatchPhaseRoutine;
 
 /**
@@ -11,8 +11,8 @@ import org.firstinspires.frc.framework.software.MatchPhaseRoutine;
 @SuppressWarnings("unused")
 public class Disabled extends MatchPhaseRoutine {
 	public void start() {
-		HW.Motors.Drive.stop();
-		HW.Motors.Shooter.stop();
+		Hardware.Drive.stop();
+		Hardware.Shooter.stop();
 	}
 
 	public void loop() {
