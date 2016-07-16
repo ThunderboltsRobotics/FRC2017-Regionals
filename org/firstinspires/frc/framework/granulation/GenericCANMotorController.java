@@ -253,27 +253,27 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			case Jaguar:
 				byte[] data = new byte[8];
 				if (isControlEnabled) {
-					int messageID;
+					JaguarCANMessageIDs messageID;
 					byte dataSize;
 					switch (controlMode) {
 						case PercentVbus:
-							messageID = 33685824;
+							messageID = JaguarCANMessageIDs.setPercent;
 							dataSize = packPercentage(data, isInverted ? -outputValue : outputValue);
 							break;
 						case Current:
-							messageID = 33687040;
+							messageID = JaguarCANMessageIDs.setCurrent;
 							dataSize = packFXP16_16(data, isInverted ? -outputValue : outputValue);
 							break;
 						case Speed:
-							messageID = 33689088;
+							messageID = JaguarCANMessageIDs.setSpeed;
 							dataSize = packFXP16_16(data, outputValue);
 							break;
 						case Position:
-							messageID = 33690048;
+							messageID = JaguarCANMessageIDs.setPosition;
 							dataSize = packFXP8_8(data, outputValue);
 							break;
 						case Voltage:
-							messageID = 33687936;
+							messageID = JaguarCANMessageIDs.setVoltage;
 							dataSize = packFXP8_8(data, isInverted ? -outputValue : outputValue);
 							break;
 						default:
@@ -282,7 +282,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 					if (syncGroup != 0) {
 						data[dataSize++] = syncGroup;
 					}
-					sendMessage(messageID, data, dataSize, 20);
+					sendMessage(messageID.getValue(), data, dataSize, 20);
 					if (m_safetyHelper != null) {
 						m_safetyHelper.feed();
 					}
