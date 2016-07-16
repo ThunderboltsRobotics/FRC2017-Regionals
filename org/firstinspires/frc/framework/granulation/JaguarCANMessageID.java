@@ -10,7 +10,8 @@ enum JaguarCANMessageID {
 	setP_Current(33686720), setP_Speed(33688768), setP_Position(33689792),
 	setI_Current(33686784), setI_Speed(33688832), setI_Position(33689856),
 	setD_Current(33686848), setD_Speed(33688896), setD_Position(33689920),
-	enableControl_Percent(33685760), enableControl_Current(33686976), enableControl_Speed(33689024), enableControl_Position(33689984), enableControl_Voltage(33687872);
+	enableControl_Percent(33685760), enableControl_Current(33686976), enableControl_Speed(33689024), enableControl_Position(33689984), enableControl_Voltage(33687872),
+	enableControl_tooMuchData(536870848);
 
 	private final int value;
 

@@ -32,7 +32,7 @@ import java.nio.ByteOrder;
  * CANJaguar.java and CANTalon.java (both decompiled) total to < 2600 lines. This file is < 2300 lines.
  * @author FRC 4739 Thunderbolts Robotics
  * @see MotorController
- * @version 2016-07-16/01
+ * @version 2016-07-16/02
  */
 @SuppressWarnings({"unused", "WeakerAccess"})
 public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSource, CANSpeedController {
@@ -607,7 +607,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		};
 		ByteBuffer byteBuffer;
 		for (JaguarCANMessageID id : trustedMessageIDs) {
-			if ((536870848 & messageID) == id.getValue()) {
+			if ((JaguarCANMessageID.enableControl_tooMuchData.getValue() & messageID) == id.getValue()) {
 				if (dataSize > 6) {
 					throw new RuntimeException("CAN message has too much data.");
 				}
