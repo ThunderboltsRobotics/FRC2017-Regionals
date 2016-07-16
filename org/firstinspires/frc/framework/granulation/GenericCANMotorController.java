@@ -32,7 +32,7 @@ import java.nio.ByteOrder;
  * CANJaguar.java and CANTalon.java (both decompiled) total to < 2600 lines. This file is < 2300 lines.
  * @author FRC 4739 Thunderbolts Robotics
  * @see MotorController
- * @version 2016-07-15/04
+ * @version 2016-07-16/00
  */
 @SuppressWarnings({"unused", "WeakerAccess"})
 public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSource, CANSpeedController {
@@ -257,23 +257,23 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 					byte dataSize;
 					switch (controlMode) {
 						case PercentVbus:
-							messageID = JaguarCANMessageIDs.setPercent;
+							messageID = JaguarCANMessageIDs.set_Percent;
 							dataSize = packPercentage(data, isInverted ? -outputValue : outputValue);
 							break;
 						case Current:
-							messageID = JaguarCANMessageIDs.setCurrent;
+							messageID = JaguarCANMessageIDs.set_Current;
 							dataSize = packFXP16_16(data, isInverted ? -outputValue : outputValue);
 							break;
 						case Speed:
-							messageID = JaguarCANMessageIDs.setSpeed;
+							messageID = JaguarCANMessageIDs.set_Speed;
 							dataSize = packFXP16_16(data, outputValue);
 							break;
 						case Position:
-							messageID = JaguarCANMessageIDs.setPosition;
+							messageID = JaguarCANMessageIDs.set_Position;
 							dataSize = packFXP8_8(data, outputValue);
 							break;
 						case Voltage:
-							messageID = JaguarCANMessageIDs.setVoltage;
+							messageID = JaguarCANMessageIDs.set_Voltage;
 							dataSize = packFXP8_8(data, isInverted ? -outputValue : outputValue);
 							break;
 						default:
@@ -363,23 +363,23 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public void setP(double p) {
 		switch (type) {
 			case Jaguar:
-				byte[] data = new byte[8];
-				byte dataSize = packFXP16_16(data, p);
-				//TODO check modes in original
+				JaguarCANMessageIDs messageID;
 				switch(controlMode) {
 					case Current:
-						sendMessage(33686720, data, dataSize);
+						messageID = JaguarCANMessageIDs.setP_Current;
 						break;
 					case Speed:
-						sendMessage(33688768, data, dataSize);
+						messageID = JaguarCANMessageIDs.setP_Speed;
 						break;
 					case Position:
-						sendMessage(33689792, data, dataSize);
+						messageID = JaguarCANMessageIDs.setP_Position;
 						break;
 					default:
 						throw new IllegalStateException("PID constants only apply in Speed, Position, and Current mode");
 				}
-
+				byte[] data = new byte[8];
+				byte dataSize = packFXP16_16(data, p);
+				sendMessage(messageID.getValue(), data, dataSize);
 				m_p = p;
 				jaguarVerifiedStatuses[JaguarVerifiedStatuses.P.ordinal()] = false;
 				break;
@@ -413,22 +413,23 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public void setI(double i) {
 		switch (type) {
 			case Jaguar:
-				byte[] data = new byte[8];
-				byte dataSize = packFXP16_16(data, i);
-				//TODO check modes in original
+				JaguarCANMessageIDs messageID;
 				switch(controlMode) {
 					case Current:
-						sendMessage(33686784, data, dataSize);
+						messageID = JaguarCANMessageIDs.setI_Current;
 						break;
 					case Speed:
-						sendMessage(33688832, data, dataSize);
+						messageID = JaguarCANMessageIDs.setI_Speed;
 						break;
 					case Position:
-						sendMessage(33689856, data, dataSize);
+						messageID = JaguarCANMessageIDs.setI_Position;
 						break;
 					default:
 						throw new IllegalStateException("PID constants only apply in Speed, Position, and Current mode");
 				}
+				byte[] data = new byte[8];
+				byte dataSize = packFXP16_16(data, i);
+				sendMessage(messageID.getValue(), data, dataSize);
 				m_i = i;
 				jaguarVerifiedStatuses[JaguarVerifiedStatuses.I.ordinal()] = false;
 				break;
@@ -459,22 +460,23 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public void setD(double d) {
 		switch (type) {
 			case Jaguar:
-				byte[] data = new byte[8];
-				byte dataSize = packFXP16_16(data, d);
-				//TODO check modes in original
+				JaguarCANMessageIDs messageID;
 				switch(controlMode) {
 					case Current:
-						sendMessage(33686848, data, dataSize);
+						messageID = JaguarCANMessageIDs.setD_Current;
 						break;
 					case Speed:
-						sendMessage(33688896, data, dataSize);
+						messageID = JaguarCANMessageIDs.setD_Speed;
 						break;
 					case Position:
-						sendMessage(33689920, data, dataSize);
+						messageID = JaguarCANMessageIDs.setD_Position;
 						break;
 					default:
 						throw new IllegalStateException("PID constants only apply in Speed, Position, and Current mode");
 				}
+				byte[] data = new byte[8];
+				byte dataSize = packFXP16_16(data, d);
+				sendMessage(messageID.getValue(), data, dataSize);
 				m_d = d;
 				jaguarVerifiedStatuses[JaguarVerifiedStatuses.D.ordinal()] = false;
 				break;
