@@ -32,7 +32,7 @@ import java.nio.ByteOrder;
  * CANJaguar.java and CANTalon.java (both decompiled) total to < 2600 lines. This file is < 2300 lines.
  * @author FRC 4739 Thunderbolts Robotics
  * @see MotorController
- * @version 2016-07-16/00
+ * @version 2016-07-16/01
  */
 @SuppressWarnings({"unused", "WeakerAccess"})
 public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSource, CANSpeedController {
@@ -253,27 +253,27 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			case Jaguar:
 				byte[] data = new byte[8];
 				if (isControlEnabled) {
-					JaguarCANMessageIDs messageID;
+					JaguarCANMessageID messageID;
 					byte dataSize;
 					switch (controlMode) {
 						case PercentVbus:
-							messageID = JaguarCANMessageIDs.set_Percent;
+							messageID = JaguarCANMessageID.set_Percent;
 							dataSize = packPercentage(data, isInverted ? -outputValue : outputValue);
 							break;
 						case Current:
-							messageID = JaguarCANMessageIDs.set_Current;
+							messageID = JaguarCANMessageID.set_Current;
 							dataSize = packFXP16_16(data, isInverted ? -outputValue : outputValue);
 							break;
 						case Speed:
-							messageID = JaguarCANMessageIDs.set_Speed;
+							messageID = JaguarCANMessageID.set_Speed;
 							dataSize = packFXP16_16(data, outputValue);
 							break;
 						case Position:
-							messageID = JaguarCANMessageIDs.set_Position;
+							messageID = JaguarCANMessageID.set_Position;
 							dataSize = packFXP8_8(data, outputValue);
 							break;
 						case Voltage:
-							messageID = JaguarCANMessageIDs.set_Voltage;
+							messageID = JaguarCANMessageID.set_Voltage;
 							dataSize = packFXP8_8(data, isInverted ? -outputValue : outputValue);
 							break;
 						default:
@@ -362,16 +362,16 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public void setP(double p) {
 		switch (type) {
 			case Jaguar:
-				JaguarCANMessageIDs messageID;
+				JaguarCANMessageID messageID;
 				switch(controlMode) {
 					case Current:
-						messageID = JaguarCANMessageIDs.setP_Current;
+						messageID = JaguarCANMessageID.setP_Current;
 						break;
 					case Speed:
-						messageID = JaguarCANMessageIDs.setP_Speed;
+						messageID = JaguarCANMessageID.setP_Speed;
 						break;
 					case Position:
-						messageID = JaguarCANMessageIDs.setP_Position;
+						messageID = JaguarCANMessageID.setP_Position;
 						break;
 					default:
 						throw new AttemptedPIDWithIncorrectControlModeException("setD");
@@ -411,16 +411,16 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public void setI(double i) {
 		switch (type) {
 			case Jaguar:
-				JaguarCANMessageIDs messageID;
+				JaguarCANMessageID messageID;
 				switch(controlMode) {
 					case Current:
-						messageID = JaguarCANMessageIDs.setI_Current;
+						messageID = JaguarCANMessageID.setI_Current;
 						break;
 					case Speed:
-						messageID = JaguarCANMessageIDs.setI_Speed;
+						messageID = JaguarCANMessageID.setI_Speed;
 						break;
 					case Position:
-						messageID = JaguarCANMessageIDs.setI_Position;
+						messageID = JaguarCANMessageID.setI_Position;
 						break;
 					default:
 						throw new AttemptedPIDWithIncorrectControlModeException("setD");
@@ -462,16 +462,16 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public void setD(double d) {
 		switch (type) {
 			case Jaguar:
-				JaguarCANMessageIDs messageID;
+				JaguarCANMessageID messageID;
 				switch(controlMode) {
 					case Current:
-						messageID = JaguarCANMessageIDs.setD_Current;
+						messageID = JaguarCANMessageID.setD_Current;
 						break;
 					case Speed:
-						messageID = JaguarCANMessageIDs.setD_Speed;
+						messageID = JaguarCANMessageID.setD_Speed;
 						break;
 					case Position:
-						messageID = JaguarCANMessageIDs.setD_Position;
+						messageID = JaguarCANMessageID.setD_Position;
 						break;
 					default:
 						throw new AttemptedPIDWithIncorrectControlModeException("setD");
@@ -601,12 +601,12 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 
 
 	static void sendMessageHelper(int messageID, byte[] data, int dataSize, int period) throws CANMessageNotFoundException {
-		JaguarCANMessageIDs[] trustedMessageIDs = {
-				JaguarCANMessageIDs.set_Percent, JaguarCANMessageIDs.set_Current, JaguarCANMessageIDs.set_Speed, JaguarCANMessageIDs.set_Position, JaguarCANMessageIDs.set_Voltage,
-				JaguarCANMessageIDs.enableControl_Percent, JaguarCANMessageIDs.enableControl_Current, JaguarCANMessageIDs.enableControl_Speed, JaguarCANMessageIDs.enableControl_Position, JaguarCANMessageIDs.enableControl_Voltage
+		JaguarCANMessageID[] trustedMessageIDs = {
+				JaguarCANMessageID.set_Percent, JaguarCANMessageID.set_Current, JaguarCANMessageID.set_Speed, JaguarCANMessageID.set_Position, JaguarCANMessageID.set_Voltage,
+				JaguarCANMessageID.enableControl_Percent, JaguarCANMessageID.enableControl_Current, JaguarCANMessageID.enableControl_Speed, JaguarCANMessageID.enableControl_Position, JaguarCANMessageID.enableControl_Voltage
 		};
 		ByteBuffer byteBuffer;
-		for (JaguarCANMessageIDs id : trustedMessageIDs) {
+		for (JaguarCANMessageID id : trustedMessageIDs) {
 			if ((536870848 & messageID) == id.getValue()) {
 				if (dataSize > 6) {
 					throw new RuntimeException("CAN message has too much data.");
@@ -1194,22 +1194,22 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public void enableControl() {
 		switch (type) {
 			case Jaguar:
-				JaguarCANMessageIDs messageID = JaguarCANMessageIDs.NULL;
+				JaguarCANMessageID messageID = JaguarCANMessageID.NULL;
 				switch(controlMode) {
 					case PercentVbus:
-						messageID = JaguarCANMessageIDs.enableControl_Percent;
+						messageID = JaguarCANMessageID.enableControl_Percent;
 						break;
 					case Current:
-						messageID = JaguarCANMessageIDs.enableControl_Current;
+						messageID = JaguarCANMessageID.enableControl_Current;
 						break;
 					case Speed:
-						messageID = JaguarCANMessageIDs.enableControl_Speed;
+						messageID = JaguarCANMessageID.enableControl_Speed;
 						return;
 					case Position:
-						messageID = JaguarCANMessageIDs.enableControl_Position;
+						messageID = JaguarCANMessageID.enableControl_Position;
 						break;
 					case Voltage:
-						messageID = JaguarCANMessageIDs.enableControl_Voltage;
+						messageID = JaguarCANMessageID.enableControl_Voltage;
 						break;
 				}
 				sendMessage(messageID.getValue(), controlMode == CANDeviceControlMode.Speed ? new byte[8] : new byte[0], controlMode == CANDeviceControlMode.Speed ? packFXP16_16(new byte[8], 0) : 0);
