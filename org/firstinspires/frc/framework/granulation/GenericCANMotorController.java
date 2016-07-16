@@ -1156,7 +1156,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 			setupPeriodicStatus();
 			getTemperature();
 			getPosition();
-			getFaults();
+			updatePeriodicStatus();
 		}
 	}
 
@@ -1177,11 +1177,17 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public void disableControl() {
 		switch (type) {
 			case Jaguar:
-				for (int message : new int[]{33685568, 33686592, 33688640, 33689664, 33687616}) {
-					sendMessage(message, new byte[0], 0);
+				JaguarCANMessageID[] disableControlMessageIDs = {
+						JaguarCANMessageID.disableControl_Percent, JaguarCANMessageID.disableControl_Current, JaguarCANMessageID.disableControl_Speed, JaguarCANMessageID.disableControl_Position, JaguarCANMessageID.disableControl_Voltage
+				};
+				for (JaguarCANMessageID id : disableControlMessageIDs) {
+					sendMessage(id.getValue(), new byte[0], 0);
 				}
-				for (int message : new int[]{33685824, 33687040, 33689088, 33690048, 33687936}) {
-					sendMessage(message, new byte[0], 0, -1);
+				JaguarCANMessageID[] setMessageIDs = {
+						JaguarCANMessageID.set_Percent, JaguarCANMessageID.set_Current, JaguarCANMessageID.set_Speed, JaguarCANMessageID.set_Position, JaguarCANMessageID.set_Voltage
+				};
+				for (JaguarCANMessageID id : setMessageIDs) {
+					sendMessage(id.getValue(), new byte[0], 0, -1);
 				}
 				break;
 			case TalonSRX:
@@ -1478,33 +1484,28 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		return (m_limits & 2) != 0;
 	}
 
-	public void getFaults() {
-		updatePeriodicStatus();
-	}
-
 	public void setVoltageRampRate(double rampRate) {
 		switch (type) {
 			case Jaguar:
 				byte[] data = new byte[8];
 				byte dataSize;
-				int message;
+				JaguarCANMessageID message;
 				switch(controlMode) {
 					case PercentVbus:
 						dataSize = packPercentage(data, rampRate / (m_maxOutputVoltage * 1000));
-						message = 33685696;
+						message = JaguarCANMessageID.setVoltageRampRate_Percent;
 						break;
 					case Voltage:
 						dataSize = packFXP8_8(data, rampRate / 1000);
-						message = 33687808;
+						message = JaguarCANMessageID.setVoltageRampRate_Voltage;
 						break;
 					default:
 						throw new AttemptedPIDWithIncorrectControlModeException("setVoltageRampRate");
 				}
-				sendMessage(message, data, dataSize);
+				sendMessage(message.getValue(), data, dataSize);
 				break;
 			case TalonSRX:
-				int rate = (int)(rampRate * 1023 / 1200);
-				CanTalonJNI.SetRampThrottle(talonJNIInstanceID, rate);
+				CanTalonJNI.SetRampThrottle(talonJNIInstanceID, (int) (rampRate * 1023 / 1200));
 				break;
 		}
 	}
