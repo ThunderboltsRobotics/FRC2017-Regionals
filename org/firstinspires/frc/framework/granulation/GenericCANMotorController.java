@@ -340,7 +340,6 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public double getP() {
 		switch (type) {
 			case Jaguar:
-				//TODO check modes in original
 				switch (controlMode) {
 					case Current:
 					case Speed:
@@ -349,7 +348,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 					case PercentVbus:
 					case Voltage:
 					default:
-						throw new IllegalStateException("PID does not apply in Percent or Voltage control modes");
+						throw new AttemptedPIDWithIncorrectControlModeException("setD");
 				}
 			case TalonSRX:
 				CanTalonJNI.RequestParam(talonJNIInstanceID, m_profile == 0 ? CanTalonJNI.param_t.eProfileParamSlot0_P.value : CanTalonJNI.param_t.eProfileParamSlot1_P.value);
@@ -375,7 +374,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 						messageID = JaguarCANMessageIDs.setP_Position;
 						break;
 					default:
-						throw new IllegalStateException("PID constants only apply in Speed, Position, and Current mode");
+						throw new AttemptedPIDWithIncorrectControlModeException("setD");
 				}
 				byte[] data = new byte[8];
 				byte dataSize = packFXP16_16(data, p);
@@ -392,14 +391,13 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public double getI() {
 		switch (type) {
 			case Jaguar:
-				//TODO check modes in original
 				switch (controlMode) {
 					case Current:
 					case Speed:
 					case Position:
 						return m_i;
 					default:
-						throw new IllegalStateException("PID does not apply in Percent or Voltage control modes");
+						throw new AttemptedPIDWithIncorrectControlModeException("setD");
 				}
 			case TalonSRX:
 				CanTalonJNI.RequestParam(talonJNIInstanceID, m_profile == 0 ? CanTalonJNI.param_t.eProfileParamSlot0_I.value : CanTalonJNI.param_t.eProfileParamSlot1_I.value);
@@ -425,7 +423,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 						messageID = JaguarCANMessageIDs.setI_Position;
 						break;
 					default:
-						throw new IllegalStateException("PID constants only apply in Speed, Position, and Current mode");
+						throw new AttemptedPIDWithIncorrectControlModeException("setD");
 				}
 				byte[] data = new byte[8];
 				byte dataSize = packFXP16_16(data, i);
@@ -442,11 +440,15 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public double getD() {
 		switch (type) {
 			case Jaguar:
-				//TODO check modes in original
-				if (!controlMode.equals(CANDeviceControlMode.PercentVbus) && !controlMode.equals(CANDeviceControlMode.Voltage)) {
-					return m_d;
-				} else {
-					throw new IllegalStateException("PID does not apply in Percent or Voltage control modes");
+				switch (controlMode) {
+					case Current:
+					case Speed:
+					case Position:
+						return m_d;
+					case PercentVbus:
+					case Voltage:
+					default:
+						throw new AttemptedPIDWithIncorrectControlModeException("setD");
 				}
 			case TalonSRX:
 				CanTalonJNI.RequestParam(talonJNIInstanceID, m_profile == 0 ? CanTalonJNI.param_t.eProfileParamSlot0_D.value : CanTalonJNI.param_t.eProfileParamSlot1_D.value);
@@ -472,7 +474,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 						messageID = JaguarCANMessageIDs.setD_Position;
 						break;
 					default:
-						throw new IllegalStateException("PID constants only apply in Speed, Position, and Current mode");
+						throw new AttemptedPIDWithIncorrectControlModeException("setD");
 				}
 				byte[] data = new byte[8];
 				byte dataSize = packFXP16_16(data, d);
@@ -1482,7 +1484,6 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				byte[] data = new byte[8];
 				byte dataSize;
 				int message;
-				//TODO check these from CANJaguar
 				switch(controlMode) {
 					case PercentVbus:
 						dataSize = packPercentage(data, rampRate / (m_maxOutputVoltage * 1000));
@@ -1493,7 +1494,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 						message = 33687808;
 						break;
 					default:
-						throw new IllegalStateException("Voltage ramp rate only applies in Percentage and Voltage modes");
+						throw new AttemptedPIDWithIncorrectControlModeException("setVoltageRampRate");
 				}
 				sendMessage(message, data, dataSize);
 				break;
