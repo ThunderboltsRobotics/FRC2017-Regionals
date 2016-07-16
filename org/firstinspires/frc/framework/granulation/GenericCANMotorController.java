@@ -601,10 +601,13 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 
 
 	static void sendMessageHelper(int messageID, byte[] data, int dataSize, int period) throws CANMessageNotFoundException {
-		int[] kTrustedMessages = new int[]{33685760, 33685824, 33686976, 33687040, 33687872, 33687936, 33689024, 33689088, 33689984, 33690048};
+		JaguarCANMessageIDs[] trustedMessageIDs = {
+				JaguarCANMessageIDs.set_Percent, JaguarCANMessageIDs.set_Current, JaguarCANMessageIDs.set_Speed, JaguarCANMessageIDs.set_Position, JaguarCANMessageIDs.set_Voltage,
+				JaguarCANMessageIDs.enableControl_Percent, JaguarCANMessageIDs.enableControl_Current, JaguarCANMessageIDs.enableControl_Speed, JaguarCANMessageIDs.enableControl_Position, JaguarCANMessageIDs.enableControl_Voltage
+		};
 		ByteBuffer byteBuffer;
-		for (int kTrustedMessage : kTrustedMessages) {
-			if ((536870848 & messageID) == kTrustedMessage) {
+		for (JaguarCANMessageIDs id : trustedMessageIDs) {
+			if ((536870848 & messageID) == id.getValue()) {
 				if (dataSize > 6) {
 					throw new RuntimeException("CAN message has too much data.");
 				}
@@ -1191,24 +1194,25 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public void enableControl() {
 		switch (type) {
 			case Jaguar:
+				JaguarCANMessageIDs messageID = JaguarCANMessageIDs.NULL;
 				switch(controlMode) {
 					case PercentVbus:
-						sendMessage(33685760, new byte[0], 0);
+						messageID = JaguarCANMessageIDs.enableControl_Percent;
 						break;
 					case Current:
-						sendMessage(33686976, new byte[0], 0);
+						messageID = JaguarCANMessageIDs.enableControl_Current;
 						break;
 					case Speed:
-						byte[] data = new byte[8];
-						byte dataSize = packFXP16_16(data, 0);
-						sendMessage(33689024, data, dataSize);
-						break;
+						messageID = JaguarCANMessageIDs.enableControl_Speed;
+						return;
 					case Position:
-						sendMessage(33689984, new byte[0], 0);
+						messageID = JaguarCANMessageIDs.enableControl_Position;
 						break;
 					case Voltage:
-						sendMessage(33687872, new byte[0], 0);
+						messageID = JaguarCANMessageIDs.enableControl_Voltage;
+						break;
 				}
+				sendMessage(messageID.getValue(), controlMode == CANDeviceControlMode.Speed ? new byte[8] : new byte[0], controlMode == CANDeviceControlMode.Speed ? packFXP16_16(new byte[8], 0) : 0);
 				break;
 			case TalonSRX:
 				setControlMode(controlMode);
