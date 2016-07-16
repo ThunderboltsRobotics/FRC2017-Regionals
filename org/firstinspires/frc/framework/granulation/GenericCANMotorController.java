@@ -1204,7 +1204,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 						break;
 					case Speed:
 						messageID = JaguarCANMessageID.enableControl_Speed;
-						return;
+						break;
 					case Position:
 						messageID = JaguarCANMessageID.enableControl_Position;
 						break;
