@@ -1,7 +1,6 @@
 package org.firstinspires.frc._4739.phases;
 
 import org.firstinspires.frc._4739.HW;
-import org.firstinspires.frc._4739.Hardware;
 import org.firstinspires.frc.framework.software.DSDashboardInterface;
 import org.firstinspires.frc.framework.software.MatchPhaseRoutine;
 import org.firstinspires.frc.framework.software.hid_controller_layouts.XBOX360Controller.Axes;
@@ -32,10 +31,10 @@ public class Teleop extends MatchPhaseRoutine {
 		double leftTankPower = HW.gamepad1.getAxis(Axes.LY);
 		double rightTankPower = HW.gamepad1.getAxis(Axes.RY);
 		if (leftTankPower < -ANALOG_STICK_DEADZONE || leftTankPower > ANALOG_STICK_DEADZONE) {
-			Hardware.Drive.left(leftTankPower * DRIVE_SPEED_MULTIPLIER);
+			HW.Drive.left(leftTankPower * DRIVE_SPEED_MULTIPLIER);
 		}
 		if (rightTankPower < -ANALOG_STICK_DEADZONE || rightTankPower > ANALOG_STICK_DEADZONE) {
-			Hardware.Drive.right(rightTankPower * DRIVE_SPEED_MULTIPLIER);
+			HW.Drive.right(rightTankPower * DRIVE_SPEED_MULTIPLIER);
 		}
 		DSDashboardInterface.setField("leftTankPower", leftTankPower);
 		DSDashboardInterface.setField("rightTankPower", rightTankPower);
@@ -67,28 +66,28 @@ public class Teleop extends MatchPhaseRoutine {
 				}
 			}
 			DSDashboardInterface.setField("shooterAimInclination", shooterAimInclination);
-			Hardware.Shooter.aim(shooterAimInclination);
+			HW.Shooter.aim(shooterAimInclination);
 
 			if (HW.gamepad2.getButton(Buttons.Y)) {
-				Hardware.Shooter.fire();
+				HW.Shooter.fire();
 			} else if (HW.gamepad2.getButton(Buttons.X)) {
-				Hardware.Shooter.intake();
+				HW.Shooter.intake();
 			} else {
-				Hardware.Shooter.stop();
+				HW.Shooter.stop();
 			}
 		} else {
 			//Use only one gamepad
 			if (HW.gamepad1.getAxis(Axes.RT) > TRIGGER_DEADZONE) {
-				Hardware.Shooter.relAim(0.3);
+				HW.Shooter.relAim(0.3);
 			} else if (HW.gamepad1.getAxis(Axes.RT) > TRIGGER_DEADZONE) {
-				Hardware.Shooter.relAim(-0.3);
+				HW.Shooter.relAim(-0.3);
 			} else {
-				Hardware.Shooter.relAim(0);
+				HW.Shooter.relAim(0);
 			}
 			if (HW.gamepad1.getButton(Buttons.A)) {
-				Hardware.Shooter.fire();
+				HW.Shooter.fire();
 			} else {
-				Hardware.Shooter.stop();
+				HW.Shooter.stop();
 			}
 		}
 	}

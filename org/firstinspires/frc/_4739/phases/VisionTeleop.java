@@ -1,7 +1,7 @@
 package org.firstinspires.frc._4739.phases;
 
 import edu.wpi.first.wpilibj.networktables.NetworkTable;
-import org.firstinspires.frc._4739.Hardware;
+import org.firstinspires.frc._4739.HW;
 import org.firstinspires.frc.framework.software.MatchPhaseRoutine;
 
 /**
@@ -38,19 +38,19 @@ public class VisionTeleop extends MatchPhaseRoutine {
 		final double goalY = GRIPResult[4] + (GRIPResult[1] / 2); //y + h/2
 
 		if (goalX < CENTER_X - HITZONE_X) {
-			Hardware.Drive.right(Math.sqrt(CENTER_X - goalX) * MAX_SPEED_HORIZONTAL);
+			HW.Drive.right(Math.sqrt(CENTER_X - goalX) * MAX_SPEED_HORIZONTAL);
 		} else if (goalX > CENTER_X + HIT_ZONE_Y) {
-			Hardware.Drive.left(Math.sqrt(goalX - CENTER_X) * MAX_SPEED_HORIZONTAL);
+			HW.Drive.left(Math.sqrt(goalX - CENTER_X) * MAX_SPEED_HORIZONTAL);
 		} else {
-			Hardware.Drive.right(0);
-			Hardware.Drive.left(0);
+			HW.Drive.right(0);
+			HW.Drive.left(0);
 		}
 		if (goalY < CENTER_Y - HIT_ZONE_Y) {
-			Hardware.Shooter.relAim(Math.sqrt(goalY - CENTER_Y) * MAX_SPEED_VERTICAL);
+			HW.Shooter.relAim(Math.sqrt(goalY - CENTER_Y) * MAX_SPEED_VERTICAL);
 		} else if (goalY > CENTER_Y + HIT_ZONE_Y) {
-			Hardware.Shooter.relAim(Math.sqrt(CENTER_Y - goalY) * MAX_SPEED_VERTICAL);
+			HW.Shooter.relAim(Math.sqrt(CENTER_Y - goalY) * MAX_SPEED_VERTICAL);
 		} else {
-			Hardware.Shooter.relAim(0);
+			HW.Shooter.relAim(0);
 		}
 	}
 }
