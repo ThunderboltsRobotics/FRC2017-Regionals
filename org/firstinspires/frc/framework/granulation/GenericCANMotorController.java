@@ -34,7 +34,7 @@ import java.nio.ByteOrder;
  * @see MotorController
  * @version 2016-07-15/04
  */
-@SuppressWarnings("WeakerAccess")
+@SuppressWarnings({"unused", "WeakerAccess"})
 public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSource, CANSpeedController {
 	//Global
 	private RioCANID port;
@@ -520,15 +520,12 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		} else {
 			CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot1_CloseLoopRampRate.value);
 		}
-
 		Timer.delay(talonGetPIDDelay_s);
-		double throttlePerMs = (double) CanTalonJNI.GetCloseLoopRampRate(talonJNIInstanceID, m_profile);
-		return throttlePerMs / 1023 * 12000;
+		return CanTalonJNI.GetCloseLoopRampRate(talonJNIInstanceID, m_profile) * 12000 / 1023;
 	}
 
 	public void setCloseLoopRampRate(double rampRate) {
-		int rate = (int)(rampRate * 1023 / 12 / 1000);
-		CanTalonJNI.SetCloseLoopRampRate(talonJNIInstanceID, m_profile, rate);
+		CanTalonJNI.SetCloseLoopRampRate(talonJNIInstanceID, m_profile, (int) (rampRate * 1023 / 12000));
 	}
 
 	public void setPID(double p, double i, double d) {
@@ -564,6 +561,40 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				break;
 		}
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	static void sendMessageHelper(int messageID, byte[] data, int dataSize, int period) throws CANMessageNotFoundException {
 		int[] kTrustedMessages = new int[]{33685760, 33685824, 33686976, 33687040, 33687872, 33687936, 33689024, 33689088, 33689984, 33690048};
@@ -613,25 +644,20 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		if (value < -1) {
 			value = -1;
 		}
-
 		if (value > 1) {
 			value = 1;
 		}
-
-		short intValue = (short)((int)(value * 32767));
-		swap16(intValue, buffer);
+		swap16((int) (value * 32767), buffer);
 		return (byte) 2;
 	}
 
 	private static byte packFXP8_8(byte[] buffer, double value) {
-		short intValue = (short) (value * 256);
-		swap16(intValue, buffer);
+		swap16((int) (value * 256), buffer);
 		return (byte) 2;
 	}
 
 	private static byte packFXP16_16(byte[] buffer, double value) {
-		int intValue = (int) (value * 65536);
-		swap32(intValue, buffer);
+		swap32((int) (value * 65536), buffer);
 		return (byte) 4;
 	}
 
@@ -1470,7 +1496,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				sendMessage(message, data, dataSize);
 				break;
 			case TalonSRX:
-				int rate = (int)(rampRate * 1023 / 12 / 100);
+				int rate = (int)(rampRate * 1023 / 1200);
 				CanTalonJNI.SetRampThrottle(talonJNIInstanceID, rate);
 				break;
 		}
