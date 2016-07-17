@@ -820,31 +820,30 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		}
 	}
 
-	public void free() {
+	private void free() {
 		allocated.free(m_deviceNumberJaguar - 1);
 		m_safetyHelper = null;
-		int messageID;
+		JaguarCANMessageID messageID;
 		switch(controlMode) {
 			case PercentVbus:
-				messageID = m_deviceNumberJaguar | 33685824;
+				messageID = JaguarCANMessageID.set_Percent;
 				break;
 			case Current:
-				messageID = m_deviceNumberJaguar | 33687040;
+				messageID = JaguarCANMessageID.set_Current;
 				break;
 			case Speed:
-				messageID = m_deviceNumberJaguar | 33689088;
+				messageID = JaguarCANMessageID.set_Speed;
 				break;
 			case Position:
-				messageID = m_deviceNumberJaguar | 33690048;
+				messageID = JaguarCANMessageID.set_Position;
 				break;
 			case Voltage:
-				messageID = m_deviceNumberJaguar | 33687936;
+				messageID = JaguarCANMessageID.set_Voltage;
 				break;
 			default:
 				return;
-				//TODO check if Jag only
 		}
-		CANJNI.FRCNetworkCommunicationCANSessionMuxSendMessage(messageID, null, -1);
+		CANJNI.FRCNetworkCommunicationCANSessionMuxSendMessage(m_deviceNumberJaguar | messageID.getValue(), null, -1);
 		configMaxOutputVoltage(12);
 	}
 
@@ -891,10 +890,10 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	public void verify() throws CANMessageNotFoundException {
 		byte[] data = new byte[8];
 		try {
-			getMessage(33691136, JaguarCANMessageID.VerificationMask.getValue(), data);
+			getMessage(JaguarCANMessageID.verify_Init.getValue(), JaguarCANMessageID.VerificationMask.getValue(), data);
 			if (data[0] != 0) {
 				data[0] = 1;
-				sendMessage(33691136, data, 1);
+				sendMessage(JaguarCANMessageID.verify_Init.getValue(), data, 1);
 				jaguarVerifiedStatuses[JaguarVerifiedStatuses.ControlMode.ordinal()] = false;
 				jaguarVerifiedStatuses[JaguarVerifiedStatuses.SpeedReference.ordinal()] = false;
 				jaguarVerifiedStatuses[JaguarVerifiedStatuses.PositionReference.ordinal()] = false;
@@ -922,7 +921,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				}
 			}
 		} catch (CANMessageNotFoundException e) {
-			requestMessage(33691136);
+			requestMessage(JaguarCANMessageID.verify_Init.getValue());
 		}
 
 		if (!jaguarVerifiedStatuses[JaguarVerifiedStatuses.ControlMode.ordinal()] && isControlEnabled) {

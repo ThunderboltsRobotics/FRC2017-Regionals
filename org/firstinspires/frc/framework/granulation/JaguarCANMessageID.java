@@ -7,6 +7,7 @@ package org.firstinspires.frc.framework.granulation;
 enum JaguarCANMessageID {
 	NULL(0),
 	VerificationMask(536870911),
+	verify_Init(33691136),
 	set_Percent(33685824), set_Current(33687040), set_Speed(33689088), set_Position(33690048), set_Voltage(33687936),
 	setP_Current(33686720), setP_Speed(33688768), setP_Position(33689792),
 	setI_Current(33686784), setI_Speed(33688832), setI_Position(33689856),
