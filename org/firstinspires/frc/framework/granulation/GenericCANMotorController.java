@@ -26,6 +26,8 @@ import org.firstinspires.frc.framework.software.WPILibJExemplifiesPoorProgrammin
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import java.lang.Math;
+
 /**
  * Clutter-free replacement for the CANJaguar and CANTalon (for the TalonSRX model) classes from WPILibJ v2016.0.0.
  * Creating an object to manipulate motor controllers? You probably want MotorController.
@@ -1683,12 +1685,12 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		jaguarReceivedStatusMessages[2] = true;
 	}
 
-	public boolean FXP8_EQ(double a, double b) {
-		return (int)(a * 256) == (int)(b * 256);
+	private boolean FXP8_EQ(double a, double b) {
+		return Math.floor(a * 256) == Math.floor(b * 256);
 	}
 
-	public boolean FXP16_EQ(double a, double b) {
-		return (int)(a * 65536) == (int)(b * 65536);
+	private boolean FXP16_EQ(double a, double b) {
+		return Math.floor(a * 65536) == Math.floor(b * 65536);
 	}
 
 	public double getExpiration() {
