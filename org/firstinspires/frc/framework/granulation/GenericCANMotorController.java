@@ -1534,13 +1534,13 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		return jaguarHardwareVersion;
 	}
 
-	public void configNeutralMode(NeutralMode mode) {
+	private void configNeutralMode(NeutralMode mode) {
 		sendMessage(33692864, new byte[]{mode.value}, 1);
 		m_neutralMode = mode;
 		jaguarVerifiedStatuses[JaguarVerifiedStatuses.NeutralMode.ordinal()] = false;
 	}
 
-	public void configEncoderCodesPerRev(int codesPerRev) {
+	private void configEncoderCodesPerRev(int codesPerRev) {
 		byte[] data = new byte[8];
 		byte dataSize = packINT16(data, (short) codesPerRev);
 		sendMessage(33692736, data, dataSize);
@@ -1548,7 +1548,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		jaguarVerifiedStatuses[JaguarVerifiedStatuses.EncoderCodesPerRevolution.ordinal()] = false;
 	}
 
-	public void configPotentiometerTurns(int turns) {
+	private void configPotentiometerTurns(int turns) {
 		switch (type) {
 			case Jaguar:
 				byte[] data = new byte[8];
@@ -1564,21 +1564,21 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		}
 	}
 
-	public void configSoftPositionLimits(double forwardLimitPosition, double reverseLimitPosition) {
+	private void configSoftPositionLimits(double forwardLimitPosition, double reverseLimitPosition) {
 		configLimitMode(LimitMode.SoftPositionLimits);
 		configForwardLimit(forwardLimitPosition);
 		configReverseLimit(reverseLimitPosition);
 	}
 
-	public void disableSoftPositionLimits() {
+	private void disableSoftPositionLimits() {
 		configLimitMode(LimitMode.SwitchInputsOnly);
 	}
 
-	public void configLimitMode(LimitMode mode) {
+	private void configLimitMode(LimitMode mode) {
 		sendMessage(33692928, new byte[]{mode.value}, 1);
 	}
 
-	public void configForwardLimit(double forwardLimitPosition) {
+	private void configForwardLimit(double forwardLimitPosition) {
 		byte[] data = new byte[8];
 		byte dataSize = packFXP16_16(data, forwardLimitPosition);
 		int dataSize1 = dataSize + 1;
@@ -1588,7 +1588,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		jaguarVerifiedStatuses[JaguarVerifiedStatuses.ForwardLimit.ordinal()] = false;
 	}
 
-	public void configReverseLimit(double reverseLimitPosition) {
+	private void configReverseLimit(double reverseLimitPosition) {
 		byte[] data = new byte[8];
 		byte dataSize = packFXP16_16(data, reverseLimitPosition);
 		int dataSize1 = dataSize + 1;
@@ -1598,7 +1598,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		jaguarVerifiedStatuses[JaguarVerifiedStatuses.ReverseLimit.ordinal()] = false;
 	}
 
-	public void configMaxOutputVoltage(double voltage) {
+	private void configMaxOutputVoltage(double voltage) {
 		byte[] data = new byte[8];
 		byte dataSize = packFXP8_8(data, voltage);
 		sendMessage(33693120, data, dataSize);
@@ -1606,7 +1606,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		jaguarVerifiedStatuses[JaguarVerifiedStatuses.MaxOutputVoltage.ordinal()] = false;
 	}
 
-	public void configFaultTime(float faultTime) {
+	private void configFaultTime(float faultTime) {
 		byte[] data = new byte[8];
 		if (faultTime < 0.5) {
 			faultTime = (float) 0.5;
@@ -1620,21 +1620,21 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		jaguarVerifiedStatuses[JaguarVerifiedStatuses.FaultTime.ordinal()] = false;
 	}
 
-	public void sendMessage(int messageID, byte[] data, int dataSize, int period) {
+	private void sendMessage(int messageID, byte[] data, int dataSize, int period) {
 		sendMessageHelper(messageID | m_deviceNumberJaguar, data, dataSize, period);
 	}
-	public void sendMessage(int messageID, byte[] data, int dataSize) {
+	private void sendMessage(int messageID, byte[] data, int dataSize) {
 		sendMessage(messageID, data, dataSize, 0);
 	}
 
-	public void requestMessage(int messageID, int period) {
+	private void requestMessage(int messageID, int period) {
 		sendMessageHelper(messageID | m_deviceNumberJaguar, null, 0, period);
 	}
-	public void requestMessage(int messageID) {
+	private void requestMessage(int messageID) {
 		requestMessage(messageID, 0);
 	}
 
-	public void getMessage(int messageID, int messageMask, byte[] data) throws CANMessageNotFoundException {
+	private void getMessage(int messageID, int messageMask, byte[] data) throws CANMessageNotFoundException {
 		ByteBuffer targetedMessageID = ByteBuffer.allocateDirect(4);
 		targetedMessageID.order(ByteOrder.LITTLE_ENDIAN);
 		targetedMessageID.asIntBuffer().put(0, (messageID | m_deviceNumberJaguar) & JaguarCANMessageID.VerificationMask.getValue());
@@ -1663,7 +1663,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		sendMessage(33692032, kMessage2Data, dataSize);
 	}
 
-	public void updatePeriodicStatus() throws CANMessageNotFoundException {
+	private void updatePeriodicStatus() throws CANMessageNotFoundException {
 		byte[] data = new byte[8];
 
 		getMessage(33692160, JaguarCANMessageID.VerificationMask.getValue(), data);
