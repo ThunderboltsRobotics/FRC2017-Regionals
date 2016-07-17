@@ -36,6 +36,7 @@ import java.nio.ByteOrder;
  */
 @SuppressWarnings({"unused", "WeakerAccess"})
 public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSource, CANSpeedController {
+	private static final boolean[] JAGUAR_VERIFIED_REFERENCE = {true, true, true, true, true, true, true, true, true, true, true, true, true, true, true};
 	//Global
 	private RioCANID port;
 	private MotorControllerType type;
@@ -366,7 +367,9 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 					}
 				}
 				m_value = outputValue;
-				verify();
+				if (jaguarVerifiedStatuses != JAGUAR_VERIFIED_REFERENCE) {
+					verify();
+				}
 				break;
 			case TalonSRX:
 				throw new ExtraParametersNotApplicableException("set", new String[]{"byte syncGroup"});
@@ -903,7 +906,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 				jaguarReceivedStatusMessages[1] = false;
 				jaguarReceivedStatusMessages[2] = false;
 				int[] messageIDs = new int[]{
-						33686912, 33688960,
+						JaguarCANMessageID.setSpeedReference.getValue(), JaguarCANMessageID.setPositionReference.getValue(),
 						JaguarCANMessageID.setP_Current.getValue(), JaguarCANMessageID.setP_Speed.getValue(), JaguarCANMessageID.setP_Position.getValue(),
 						JaguarCANMessageID.setI_Current.getValue(), JaguarCANMessageID.setI_Speed.getValue(), JaguarCANMessageID.setI_Position.getValue(),
 						JaguarCANMessageID.setD_Current.getValue(), JaguarCANMessageID.setD_Speed.getValue(), JaguarCANMessageID.setD_Position.getValue(),
@@ -935,7 +938,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 		byte var28;
 		if (!jaguarVerifiedStatuses[JaguarVerifiedStatuses.SpeedReference.ordinal()]) {
 			try {
-				getMessage(33686912, JaguarCANMessageID.VerificationMask.getValue(), data);
+				getMessage(JaguarCANMessageID.setSpeedReference.getValue(), JaguarCANMessageID.VerificationMask.getValue(), data);
 				var28 = data[0];
 				if (m_speedReference == var28) {
 					jaguarVerifiedStatuses[JaguarVerifiedStatuses.SpeedReference.ordinal()] = true;
@@ -943,12 +946,12 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 					setSpeedReference(m_speedReference);
 				}
 			} catch (CANMessageNotFoundException e) {
-				requestMessage(33686912);
+				requestMessage(JaguarCANMessageID.setSpeedReference.getValue());
 			}
 		}
 		if (!jaguarVerifiedStatuses[JaguarVerifiedStatuses.PositionReference.ordinal()]) {
 			try {
-				getMessage(33688960, JaguarCANMessageID.VerificationMask.getValue(), data);
+				getMessage(JaguarCANMessageID.setPositionReference.getValue(), JaguarCANMessageID.VerificationMask.getValue(), data);
 				var28 = data[0];
 				if (m_positionReference == var28) {
 					jaguarVerifiedStatuses[JaguarVerifiedStatuses.PositionReference.ordinal()] = true;
@@ -956,7 +959,7 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 					setPositionReference(m_positionReference);
 				}
 			} catch (CANMessageNotFoundException e) {
-				requestMessage(33688960);
+				requestMessage(JaguarCANMessageID.setPositionReference.getValue());
 			}
 		}
 
@@ -1254,13 +1257,13 @@ public class GenericCANMotorController implements MotorSafety, PIDOutput, PIDSou
 	}
 
 	private void setSpeedReference(int reference) {
-		sendMessage(33686912, new byte[]{(byte) reference}, 1);
+		sendMessage(JaguarCANMessageID.setSpeedReference.getValue(), new byte[]{(byte) reference}, 1);
 		m_speedReference = reference;
 		jaguarVerifiedStatuses[JaguarVerifiedStatuses.SpeedReference.ordinal()] = false;
 	}
 
 	private void setPositionReference(int reference) {
-		sendMessage(33688960, new byte[]{(byte) reference}, 1);
+		sendMessage(JaguarCANMessageID.setPositionReference.getValue(), new byte[]{(byte) reference}, 1);
 		m_positionReference = reference;
 		jaguarVerifiedStatuses[JaguarVerifiedStatuses.PositionReference.ordinal()] = false;
 	}
