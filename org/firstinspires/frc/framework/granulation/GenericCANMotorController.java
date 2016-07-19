@@ -22,6 +22,7 @@ import edu.wpi.first.wpilibj.tables.ITable;
 import edu.wpi.first.wpilibj.tables.ITableListener;
 import edu.wpi.first.wpilibj.util.AllocationException;
 import edu.wpi.first.wpilibj.util.CheckedAllocationException;
+import org.firstinspires.frc.framework.General.ExtraParametersNotApplicableException;
 import org.firstinspires.frc.framework.abstraction.RioCANID;
 import org.firstinspires.frc.framework.abstraction.RobotKiller;
 import org.firstinspires.frc.framework.hardware.MotorController;
@@ -32,14 +33,10 @@ import org.firstinspires.frc.framework.software.WPILibJExemplifiesPoorProgrammin
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import java.lang.Math;
-
-import static org.firstinspires.frc.framework.General.implodeStringArray;
-
 /**
  * Clutter-free replacement for the CANJaguar and CANTalon (for the TalonSRX model) classes from WPILibJ v2016.0.0.
  * Creating an object to manipulate motor controllers? You probably want MotorController.
- * CANJaguar.java and CANTalon.java (both decompiled) total to < 2600 lines. This file is < 2300 lines.
+ * CANJaguar.java and CANTalon.java (both decompiled) total to < 2600 lines. This file is < 2200 lines.
  * @author FRC 4739 Thunderbolts Robotics
  * @see MotorController
  * @version 2016-07-19/01
@@ -88,11 +85,6 @@ public class GenericCANMotorController implements CANSpeedController, MotorSafet
 	private class AttemptedPIDWithIncorrectControlModeException extends UnsupportedOperationException {
 		AttemptedPIDWithIncorrectControlModeException(String methodName) {
 			super("Attempted to call the " + methodName + " method of a CAN " + type.name() + " on " + controlMode.name() + " mode");
-		}
-	}
-	private class ExtraParametersNotApplicableException extends IllegalArgumentException {
-		ExtraParametersNotApplicableException(String methodName, String[] parameters) {
-			super(type.name() + "s don't use the extra argument for " + methodName + "(..." + implodeStringArray(parameters) + ")");
 		}
 	}
 	private class InvalidJaguarFirmwareVersionException extends IndexOutOfBoundsException {

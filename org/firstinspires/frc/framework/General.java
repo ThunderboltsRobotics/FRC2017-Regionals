@@ -5,6 +5,12 @@ package org.firstinspires.frc.framework;
  * @version 2016-07-19/00
  */
 public class General {
+	public static final class ExtraParametersNotApplicableException extends IllegalArgumentException {
+		public ExtraParametersNotApplicableException(String methodName, String[] parameters) {
+			super("The extra argument for " + methodName + "(..." + implodeStringArray(parameters) + ") isn't used there");
+		}
+	}
+
 	public static String implodeStringArray(String separator, String[] strings) {
 		String toReturn = strings[0];
 		for (int i = 1; i < strings.length; i++) {
