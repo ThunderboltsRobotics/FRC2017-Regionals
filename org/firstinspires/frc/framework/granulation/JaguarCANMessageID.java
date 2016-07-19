@@ -2,7 +2,7 @@ package org.firstinspires.frc.framework.granulation;
 
 /**
  * @author FRC 4739 Thunderbolts Robotics
- * @version 2016-07-19/00
+ * @version 2016-07-19/01
  */
 enum JaguarCANMessageID {
 	NULL(0),
