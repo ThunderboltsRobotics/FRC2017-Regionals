@@ -41,6 +41,7 @@ import java.nio.ByteOrder;
  * @see MotorController
  * @version 2016-07-19/01
  */
+@SuppressWarnings("unused")
 public class GenericCANMotorController implements CANSpeedController, MotorSafety, PIDSource {
 	//Global
 	private final RioCANID port;
@@ -80,6 +81,7 @@ public class GenericCANMotorController implements CANSpeedController, MotorSafet
 	private static final int TALON_VOLTAGE_REVERSE_MIN = -12;
 	private PIDSourceType m_pidSource = PIDSourceType.kDisplacement;
 	private long talonJNIInstanceID;
+	private int m_profile = 0;
 
 	//Throwables
 	private class AttemptedPIDWithIncorrectControlModeException extends UnsupportedOperationException {
@@ -120,7 +122,6 @@ public class GenericCANMotorController implements CANSpeedController, MotorSafet
 	private short m_encoderCodesPerRev;
 	private short m_potentiometerTurns;
 	private byte m_limits;
-	private int m_profile;
 	private int m_codesPerRev;
 	private int m_numPotTurns;
 
@@ -131,7 +132,7 @@ public class GenericCANMotorController implements CANSpeedController, MotorSafet
 	private MotorSafetyHelper m_safetyHelper;
 	private NeutralMode m_neutralMode;
 
-	public enum CANDeviceControlMode implements ControlMode {
+	private enum CANDeviceControlMode implements ControlMode {
 		PercentVbus(0), Position(1), Speed(2), Current(3), Voltage(4), Follower(5), MotionProfile(6), Disabled(15);
 
 		public final int value;
@@ -172,7 +173,6 @@ public class GenericCANMotorController implements CANSpeedController, MotorSafet
 	private void talonConstructor(int deviceNumber) {
 		m_deviceNumberTalon = deviceNumber;
 		m_safetyHelper = new MotorSafetyHelper(this);
-		m_profile = 0;
 		m_setPoint = 0;
 		m_codesPerRev = 0;
 		m_numPotTurns = 0;
@@ -303,6 +303,7 @@ public class GenericCANMotorController implements CANSpeedController, MotorSafet
 			e.printStackTrace();
 		}
 	}
+	@SuppressWarnings("WeakerAccess")
 	public void setControlMode(CANDeviceControlMode m) {
 		switch (type) {
 			case Jaguar:
@@ -343,6 +344,7 @@ public class GenericCANMotorController implements CANSpeedController, MotorSafet
 		disableControl();
 	}
 
+	@SuppressWarnings("WeakerAccess")
 	public void disableControl() {
 		if (!isControlEnabled) return;
 		switch (type) {
@@ -376,6 +378,7 @@ public class GenericCANMotorController implements CANSpeedController, MotorSafet
 		enableControl();
 	}
 
+	@SuppressWarnings("WeakerAccess")
 	public void enableControl() {
 		if (isControlEnabled) return;
 		switch (type) {
@@ -696,11 +699,7 @@ public class GenericCANMotorController implements CANSpeedController, MotorSafet
 	}
 
 	public double getF() {
-		if (m_profile == 0) {
-			CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot0_F.value);
-		} else {
-			CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot1_F.value);
-		}
+		CanTalonJNI.RequestParam(talonJNIInstanceID, m_profile == 0 ? CanTalonJNI.param_t.eProfileParamSlot0_F.value : CanTalonJNI.param_t.eProfileParamSlot1_F.value);
 		Timer.delay(TALON_GET_PID_DELAY_S);
 		return CanTalonJNI.GetFgain(talonJNIInstanceID, m_profile);
 	}
@@ -710,33 +709,34 @@ public class GenericCANMotorController implements CANSpeedController, MotorSafet
 	}
 
 	public double getIZone() {
-		if (m_profile == 0) {
-			CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot0_IZone.value);
-		} else {
-			CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot1_IZone.value);
-		}
+		CanTalonJNI.RequestParam(talonJNIInstanceID, m_profile == 0 ? CanTalonJNI.param_t.eProfileParamSlot0_IZone.value : CanTalonJNI.param_t.eProfileParamSlot1_IZone.value);
 		Timer.delay(TALON_GET_PID_DELAY_S);
 		return (double) CanTalonJNI.GetIzone(talonJNIInstanceID, m_profile);
 	}
 
+	@SuppressWarnings("WeakerAccess")
 	public void setIZone(int iZone) {
 		CanTalonJNI.SetIzone(talonJNIInstanceID, m_profile, iZone);
 	}
 
 	public double getCloseLoopRampRate() {
-		if (m_profile == 0) {
-			CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot0_CloseLoopRampRate.value);
-		} else {
-			CanTalonJNI.RequestParam(talonJNIInstanceID, CanTalonJNI.param_t.eProfileParamSlot1_CloseLoopRampRate.value);
-		}
+		CanTalonJNI.RequestParam(talonJNIInstanceID, m_profile == 0 ? CanTalonJNI.param_t.eProfileParamSlot0_CloseLoopRampRate.value : CanTalonJNI.param_t.eProfileParamSlot1_CloseLoopRampRate.value);
 		Timer.delay(TALON_GET_PID_DELAY_S);
 		return CanTalonJNI.GetCloseLoopRampRate(talonJNIInstanceID, m_profile) * 12000 / 1023;
 	}
 
+	@SuppressWarnings("WeakerAccess")
 	public void setCloseLoopRampRate(double rampRate) {
 		CanTalonJNI.SetCloseLoopRampRate(talonJNIInstanceID, m_profile, (int) (rampRate * 1023 / 12000));
 	}
 
+	/**
+	 * Jaguar: Calls setP(p), setI(i) and setD(d).
+	 * TalonSRX: Calls setPID(p, i, d, 0, 0, 0, m_profile).
+	 * @param p Passed to setP() to set the Proportion scalar
+	 * @param i Passed to setI() to set the Integral scalar
+	 * @param d Passed to setD() to set the Derivative scalar
+	 */
 	public void setPID(double p, double i, double d) {
 		switch (type) {
 			case Jaguar:
@@ -750,23 +750,35 @@ public class GenericCANMotorController implements CANSpeedController, MotorSafet
 		}
 	}
 
-	public void setPID(double p, double i, double d, double f, int iZone, double closeLoopRampRate, int profile) {
+	/**
+	 * Jaguar: Throws exception. Use setPID(double p, double i, double d).
+	 * TalonSRX: Sets the current PID profile to profile; then calls setP(p), setI(i), setD(d), setF(f), setIZone(iZone) and setCloseLoopRampRate(rampRate).
+	 * @param p Passed to setP() to set the Proportion scalar
+	 * @param i Passed to setI() to set the Integral scalar
+	 * @param d Passed to setD() to set the Derivative scalar
+	 * @param f Passed to setF()
+	 * @param iZone Passed to setIZone()
+	 * @param rampRate Passed to setCloseLoopRampRate()
+	 * @param profile Which PID profile to use, 0 or 1
+	 */
+	@SuppressWarnings("WeakerAccess")
+	public void setPID(double p, double i, double d, double f, int iZone, double rampRate, int profile) {
 		switch (type) {
 			case Jaguar:
-				throw new ExtraParametersNotApplicableException("setPID", new String[]{"double f", "int iZone", "double closeLoopRampRate", "int profile"});
+				throw new ExtraParametersNotApplicableException("setPID", new String[]{"double f", "int iZone", "double rampRate", "int profile"});
 			case TalonSRX:
-				if (profile != 0 && profile != 1) {
-					throw new IllegalArgumentException("Talon PID profile must be 0 or 1.");
-				} else {
-					m_profile = profile;
+				try {
 					setProfile(m_profile);
-					setP(p);
-					setI(i);
-					setD(d);
-					setF(f);
-					setIZone(iZone);
-					setCloseLoopRampRate(closeLoopRampRate);
+				} catch (IllegalArgumentException e) {
+					e.printStackTrace();
+					return;
 				}
+				setP(p);
+				setI(i);
+				setD(d);
+				setF(f);
+				setIZone(iZone);
+				setCloseLoopRampRate(rampRate);
 				break;
 		}
 	}
@@ -1073,7 +1085,7 @@ public class GenericCANMotorController implements CANSpeedController, MotorSafet
 	}
 
 	private static short unpack16(byte[] buffer, int offset) {
-		return (short)(buffer[offset] & 255 | (short)(buffer[offset + 1] << 8) & '\uff00');
+		return (short) (buffer[offset] & 255 | (short) (buffer[offset + 1] << 8) & '\uff00');
 	}
 
 	private static int unpack32(byte[] buffer, int offset) {
@@ -1410,7 +1422,7 @@ public class GenericCANMotorController implements CANSpeedController, MotorSafet
 			try {
 				getMessage(33693184, JaguarCANMessageID.VerificationMask.getValue(), data);
 				var32 = unpackINT16(data);
-				if ((int)((double) m_faultTime * 1000) == var32) {
+				if (Math.floor(m_faultTime * 1000) == var32) {
 					jagVerifiedStatuses[JaguarVerifiedStatuses.FaultTime.ordinal()] = true;
 				} else {
 					configFaultTime(m_faultTime);
@@ -1667,7 +1679,7 @@ public class GenericCANMotorController implements CANSpeedController, MotorSafet
 	private void configFaultTime(float faultTime) {
 		byte[] data = new byte[8];
 		faultTime = Math.min(Math.max(faultTime, JAGUAR_FAULT_TIME_MIN), JAGUAR_FAULT_TIME_MAX);
-		byte dataSize = packINT16(data, (short)((int)((double) faultTime * 1000)));
+		byte dataSize = packINT16(data, (short) Math.floor(faultTime * 1000));
 		sendMessage(33693184, data, dataSize);
 		m_faultTime = faultTime;
 		jagVerifiedStatuses[JaguarVerifiedStatuses.FaultTime.ordinal()] = false;
@@ -1933,8 +1945,7 @@ public class GenericCANMotorController implements CANSpeedController, MotorSafet
 	}
 
 	private void setReverseSoftLimit(double reverseLimit) {
-		int nativeLimitPos = ScaleRotationsToNativeUnits(m_feedbackDevice, reverseLimit);
-		CanTalonJNI.SetReverseSoftLimit(talonJNIInstanceID, nativeLimitPos);
+		CanTalonJNI.SetReverseSoftLimit(talonJNIInstanceID, ScaleRotationsToNativeUnits(m_feedbackDevice, reverseLimit));
 	}
 
 	private void enableReverseSoftLimit(boolean enable) {
@@ -2040,51 +2051,42 @@ public class GenericCANMotorController implements CANSpeedController, MotorSafet
 
 	private double GetNativeUnitsPerRotationScalar(FeedbackDevice devToLookup) {
 		double toReturn = 0;
-		boolean scalingAvail = false;
+		boolean scalingAvailable = false;
 		switch(devToLookup.ordinal()) {
 			case 1:
 				switch(m_feedbackDevice.ordinal()) {
-					case 1:
-					case 2:
-					case 3:
-					case 4:
-					case 5:
-					case 6:
-					default:
-						break;
+					//NOTE: here was cases 1 through 6 and default, leading to a break.
 					case 7:
 					case 8:
 						toReturn = 4096;
-						scalingAvail = true;
+						scalingAvailable = true;
 				}
-
-				if (!scalingAvail && 0 != m_codesPerRev) {
-					toReturn = (double)(4 * m_codesPerRev);
-					scalingAvail = true;
+				if (!scalingAvailable && 0 != m_codesPerRev) {
+					toReturn = (double) (4 * m_codesPerRev);
+					scalingAvailable = true;
 				}
 				break;
 			case 2:
 			case 3:
 				if (0 != m_numPotTurns) {
 					toReturn = 1024 / (double) m_numPotTurns;
-					scalingAvail = true;
+					scalingAvailable = true;
 				}
 				break;
 			case 4:
 			case 5:
 				if (0 != m_codesPerRev) {
-					toReturn = (double)(m_codesPerRev);
-					scalingAvail = true;
+					toReturn = (double) (m_codesPerRev);
+					scalingAvailable = true;
 				}
 				break;
 			case 6:
 			case 7:
 			case 8:
 				toReturn = 4096;
-				scalingAvail = true;
+				scalingAvailable = true;
 		}
-
-		return scalingAvail ? toReturn : 0;
+		return scalingAvailable ? toReturn : 0;
 	}
 
 	private int ScaleRotationsToNativeUnits(FeedbackDevice devToLookup, double fullRotations) {
