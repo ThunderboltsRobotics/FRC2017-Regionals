@@ -9,7 +9,7 @@ import org.firstinspires.frc.framework.abstraction.MatchPhase;
  * Clutter-free replacement for IterativeRobot from WPILibJ v2016.0.0.
  * IterativeRobot.java (decompiled) totals to < 200 lines. This file is < 200 lines.
  * @author FRC 4739 Thunderbolts Robotics
- * @version 2016-07-10/03
+ * @version 2016-07-20/00
  */
 public abstract class BetterRobot extends CustomRobotBase {
 	public static final DriverStation DSInstance = DriverStation.getInstance();
@@ -97,11 +97,11 @@ public abstract class BetterRobot extends CustomRobotBase {
 		} catch (Throwable t) {
 			//Display error in DS
 			System.out.println("Error caught in a routine running during the " +
-					(DS.isEnabled() ? (
-							(DS.isTest() ? "Test" : (
+					(DS.isEnabled() ?
+							(DS.isTest() ? "Test" :
 									(DS.isAutonomous() ? "Auto" : "Teleop")
-							))
-					) : "Disabled")
+							)
+					: "Disabled")
 					+ " phase");
 			t.printStackTrace();
 			break;
@@ -114,7 +114,17 @@ public abstract class BetterRobot extends CustomRobotBase {
 	 * Called once when the robot is first powered on.
 	 * To be overwritten.
 	 */
-	public abstract void initialize();
+	public void initialize() {
+		init();
+	}
+
+	/**
+	 * Called once when the robot is first powered on.
+	 * To be overwritten.
+	 */
+	public void init() {
+		initialize();
+	}
 
 	/**
 	 * Called when the Disabled phase is started (incl. when first powered on).
@@ -128,7 +138,7 @@ public abstract class BetterRobot extends CustomRobotBase {
 	public abstract void disabledLoop();
 
 	/**
-	 * Called when the Autonomous phase is started (incl. when first powered on).
+	 * Called when the Autonomous phase is started.
 	 * To be overwritten.
 	 */
 	public abstract void autoStart();
@@ -138,7 +148,7 @@ public abstract class BetterRobot extends CustomRobotBase {
 	 */
 	public abstract void autoLoop();
 	/**
-	 * Called when the Teleop phase is started (incl. when first powered on).
+	 * Called when the Teleop phase is started.
 	 * To be overwritten.
 	 */
 	public abstract void teleopStart();
@@ -149,7 +159,7 @@ public abstract class BetterRobot extends CustomRobotBase {
 	public abstract void teleopLoop();
 
 	/**
-	 * Called when the Test phase is started (incl. when first powered on).
+	 * Called when the Test phase is started.
 	 * To be overwritten.
 	 */
 	public abstract void testStart();

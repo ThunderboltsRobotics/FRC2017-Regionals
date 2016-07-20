@@ -15,7 +15,6 @@ public enum MotorControllerType {
 	MotorControllerType(boolean isCANEnabled) {
 		this.isCANEnabled = isCANEnabled;
 	}
-	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
 	public boolean getIsCANEnabled() {
 		return isCANEnabled;
 	}

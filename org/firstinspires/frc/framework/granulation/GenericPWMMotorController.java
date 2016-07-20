@@ -3,8 +3,8 @@ package org.firstinspires.frc.framework.granulation;
 import edu.wpi.first.wpilibj.SafePWM;
 import edu.wpi.first.wpilibj.SpeedController;
 import edu.wpi.first.wpilibj.hal.DIOJNI;
-import org.firstinspires.frc.framework.abstraction.RioHWPort;
-import org.firstinspires.frc.framework.abstraction.RioHWPort.*;
+import org.firstinspires.frc.framework.hardware.RioHWPort;
+import org.firstinspires.frc.framework.hardware.RioHWPort.*;
 import org.firstinspires.frc.framework.hardware.MotorController;
 import org.firstinspires.frc.framework.hardware.MotorControllerType;
 
@@ -26,6 +26,7 @@ public class GenericPWMMotorController extends SafePWM implements SpeedControlle
 		Victor(new double[]{2.027, 1.525, 1.507, 1.49, 1.026}, true),
 		VictorSP(new double[]{2.004, 1.52, 1.5, 1.48, 0.997}, false);
 
+		public static final double[] DEFAULT_ARGS = new double[]{2, 1.5, 1.5, 1.5, 1};
 		private final double[] args;
 		private final PeriodMultiplier multiplier;
 		InitPresets(double[] d, boolean is2X) {
@@ -80,7 +81,7 @@ public class GenericPWMMotorController extends SafePWM implements SpeedControlle
 				setPeriodMultiplier(InitPresets.VictorSP.getMultiplier());
 				break;
 			default:
-				args = new double[]{2, 1.5, 1.5, 1.5, 1};
+				args = InitPresets.DEFAULT_ARGS;
 				setPeriodMultiplier(PeriodMultiplier.k1X);
 		}
 		setBounds(args[0], args[1], args[2], args[3], args[4]);
@@ -102,11 +103,7 @@ public class GenericPWMMotorController extends SafePWM implements SpeedControlle
 	}
 
 	public void set(double d) {
-		d = Math.min(Math.max(d, -1), 1);
-		if (isInverted) {
-			d = -d;
-		}
-
+		d = Math.min(Math.max(isInverted ? -d : d, -1), 1);
 		if (d == 0) {
 			this.setRaw(PWM_CENTER_VALUE);
 		} else if (d > 0) {
@@ -118,7 +115,6 @@ public class GenericPWMMotorController extends SafePWM implements SpeedControlle
 			//TODO what is this calculation
 			this.setRaw((int) (d * (maxNegPWM - PWMMaxNegativeValue) + maxNegPWM + 0.5));
 		}
-
 		this.Feed();
 	}
 
