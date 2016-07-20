@@ -1,8 +1,7 @@
 package org.firstinspires.frc.framework.hardware;
 
 import edu.wpi.first.wpilibj.*;
-import org.firstinspires.frc.framework.abstraction.RioCANID;
-import org.firstinspires.frc.framework.abstraction.RioHWPort;
+import org.firstinspires.frc.framework.software.RioCANID;
 
 /**
  * Represents and allows the manipulation of a motor's speed controller, allowing motors to be controlled. Both PWM and CAN interfaces are supported.

@@ -3,8 +3,8 @@ package org.firstinspires.frc.framework.granulation;
 import edu.wpi.first.wpilibj.SafePWM;
 import edu.wpi.first.wpilibj.SpeedController;
 import edu.wpi.first.wpilibj.hal.DIOJNI;
-import org.firstinspires.frc.framework.abstraction.RioHWPort;
-import org.firstinspires.frc.framework.abstraction.RioHWPort.*;
+import org.firstinspires.frc.framework.hardware.RioHWPort;
+import org.firstinspires.frc.framework.hardware.RioHWPort.*;
 import org.firstinspires.frc.framework.hardware.MotorController;
 import org.firstinspires.frc.framework.hardware.MotorControllerType;
 
