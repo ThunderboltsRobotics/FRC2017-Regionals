@@ -23,12 +23,12 @@ import edu.wpi.first.wpilibj.tables.ITableListener;
 import edu.wpi.first.wpilibj.util.AllocationException;
 import edu.wpi.first.wpilibj.util.CheckedAllocationException;
 import org.firstinspires.frc.framework.General.ExtraParametersNotApplicableException;
+import org.firstinspires.frc.framework.General.WPILibJExemplifiesPoorProgrammingException;
 import org.firstinspires.frc.framework.abstraction.RioCANID;
 import org.firstinspires.frc.framework.abstraction.RobotKiller;
 import org.firstinspires.frc.framework.hardware.MotorController;
 import org.firstinspires.frc.framework.hardware.MotorController.CANIsUnsupportedException;
 import org.firstinspires.frc.framework.hardware.MotorControllerType;
-import org.firstinspires.frc.framework.software.WPILibJExemplifiesPoorProgrammingException;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -310,9 +310,11 @@ public class GenericCANMotorController implements CANSpeedController, MotorSafet
 				if (m.isTalonOnly()) {
 					throw new IllegalArgumentException("That control mode cannot be used on " + type.name() + "s!");
 				}
-				disableControl();
-				controlMode = m;
-				jagVerifiedStatuses[JaguarVerifiedStatuses.ControlMode.ordinal()] = false;
+				if (controlMode != m) {
+					disableControl();
+					controlMode = m;
+					jagVerifiedStatuses[JaguarVerifiedStatuses.ControlMode.ordinal()] = false;
+				}
 				break;
 			case TalonSRX:
 				if (controlMode != m) {
