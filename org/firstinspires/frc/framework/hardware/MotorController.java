@@ -1,6 +1,6 @@
 package org.firstinspires.frc.framework.hardware;
 
-import org.firstinspires.frc.framework.abstraction.RioCANID;
+import org.firstinspires.frc.framework.software.RioCANID;
 import org.firstinspires.frc.framework.granulation.GenericCANMotorController;
 import org.firstinspires.frc.framework.granulation.GenericPWMMotorController;
 

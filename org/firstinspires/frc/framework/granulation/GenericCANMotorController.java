@@ -24,7 +24,7 @@ import edu.wpi.first.wpilibj.util.AllocationException;
 import edu.wpi.first.wpilibj.util.CheckedAllocationException;
 import org.firstinspires.frc.framework.General.ExtraParametersNotApplicableException;
 import org.firstinspires.frc.framework.General.WPILibJExemplifiesPoorProgrammingException;
-import org.firstinspires.frc.framework.abstraction.RioCANID;
+import org.firstinspires.frc.framework.software.RioCANID;
 import org.firstinspires.frc.framework.abstraction.RobotKiller;
 import org.firstinspires.frc.framework.hardware.MotorController;
 import org.firstinspires.frc.framework.hardware.MotorController.CANIsUnsupportedException;
