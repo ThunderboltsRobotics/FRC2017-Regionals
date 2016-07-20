@@ -1,8 +1,8 @@
 package org.firstinspires.frc._4739;
 
 import org.firstinspires.frc.framework.abstraction.DSGamepadIndex;
-import org.firstinspires.frc.framework.abstraction.RioCANID;
-import org.firstinspires.frc.framework.abstraction.RioHWPort;
+import org.firstinspires.frc.framework.software.RioCANID;
+import org.firstinspires.frc.framework.hardware.RioHWPort;
 import org.firstinspires.frc.framework.hardware.MotorController;
 import org.firstinspires.frc.framework.hardware.MotorControllerType;
 //import org.firstinspires.frc.framework.hardware.MotorEncoder;
