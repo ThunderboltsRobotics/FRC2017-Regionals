@@ -24,7 +24,7 @@ public class General {
 	}
 
 	/**
-	 * If you've ever pressed F3 (go to declaration in Eclipse) on something robot-related that you didn't write, you know what this is for.
+	 * If you've ever pressed F3 (Eclipse) or <Ctrl>B (IDEA) on something robot-related that you didn't write, you know what this is for.
 	 * @author FRC 4739 Thunderbolts Robotics
 	 * @version 2016-07-14/00
 	 */
