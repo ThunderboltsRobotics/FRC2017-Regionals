@@ -1,7 +1,5 @@
 package org.firstinspires.frc.framework.hardware;
 
-import org.firstinspires.frc.framework.abstraction.RioHWPort;
-
 /**
  * Unfinished interface for LED strips, rings or other arrays wired to the RoboRIO via PWM.
  * @author FRC 4739 Thunderbolts Robotics
