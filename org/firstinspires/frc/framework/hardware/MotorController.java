@@ -53,9 +53,7 @@ public class MotorController {
 	}
 
 	public void setSpeed(double d) {
-		if (isReversed) {
-			d = -d;
-		}
+		if (isReversed) d = -d;
 		if (isCAN) {
 			rawCANInstance.set(d);
 		} else {
