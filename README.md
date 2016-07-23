@@ -1,5 +1,5 @@
 # FRC2016-DDU
-### "We'll be good eventually"
+"We'll be good eventually"
 
 ![Dev status](https://img.shields.io/badge/milestone-unreleased-lightgrey.svg?style=flat) 
 [![GitHub issues](https://img.shields.io/github/issues/ThunderboltsRobotics/EZ-WPILibJ.svg)](https://github.com/ThunderboltsRobotics/EZ-WPILibJ/issues) 
