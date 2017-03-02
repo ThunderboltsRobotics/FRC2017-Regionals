@@ -21,6 +21,7 @@ public class RobotMain extends IterativeRobot {
 	}
 	public void disabledInit() {
 		disabled.start();
+		System.out.println("Hello, World!");
 	}
 	public void disabledPeriodic() {
 		disabled.loop();
